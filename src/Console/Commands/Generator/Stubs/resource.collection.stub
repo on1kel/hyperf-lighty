@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ resource_namespace }};
+
+use {{ model_namespace }}\{{ model_name }};
+use On1kel\HyperfLighty\Http\Resources\CollectionResource;
+
+/**
+ * @property array<int, {{ model_name }}>|array<int, array<string,mixed>> $collection
+ */
+class {{ resource_name }} extends CollectionResource
+{
+    /**
+     * Оборачиваем элементы в ключ 'data', чтобы ApiController мог корректно извлечь тело.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'data' => parent::toArray(),
+        ];
+    }
+}

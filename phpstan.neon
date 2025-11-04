@@ -1,0 +1,7 @@
+parameters:
+    level: 10
+    bootstrapFiles:
+        - bundles.php
+    paths:
+        - ./config
+        - ./src

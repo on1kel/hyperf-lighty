@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ model_namespace }};
+
+use On1kel\HyperfLighty\Models\Model;
+use Hyperf\Database\Model\SoftDeletes;
+
+/**
+ * App\Models\{{ model_name }}
+ */
+final class {{ model_name }} extends Model
+{
+    use SoftDeletes;
+
+    /**
+     * @var array<int,string>
+     */
+    protected array $fillable = [
+        'name',
+    ];
+}

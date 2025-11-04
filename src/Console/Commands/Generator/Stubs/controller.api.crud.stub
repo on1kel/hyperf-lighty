@@ -1,0 +1,241 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ controller_namespace }};
+
+use JsonException;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\ApiCRUDController;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\ActionClosureModeEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\ApiCRUDControllerMetaDTO;
+use On1kel\HyperfLighty\Http\Requests\CRUD\BulkDestroyRequest;
+use On1kel\HyperfLighty\Http\Requests\CRUD\IndexRequest;
+use On1kel\HyperfLighty\Http\Requests\CRUD\SetPositionRequest;
+use On1kel\HyperfLighty\OpenApi\Complexes\BulkDestroyActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\DestroyActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\IndexActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\SetPositionActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\ShowActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\StoreActionComplex;
+use On1kel\HyperfLighty\OpenApi\Complexes\UpdateActionComplex;
+use On1kel\HyperfLighty\Services\CRUD\DTO\ActionClosureDataDTO;
+use On1kel\HyperfLighty\Transaction\WithDBTransaction;
+use Psr\Http\Message\ResponseInterface;
+use ReflectionException;
+use Spatie\DataTransferObject\Exceptions\UnknownProperties;
+use Throwable;
+use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Annotation\DeleteMapping;
+use Hyperf\HttpServer\Annotation\GetMapping;
+use Hyperf\HttpServer\Annotation\PostMapping;
+use Hyperf\HttpServer\Annotation\PutMapping;
+use {{ model_namespace }}\{{ model_name }};
+use App\Http\Requests\{{ model_name }}\{{ model_name }}StoreRequest;
+use App\Http\Requests\{{ model_name }}\{{ model_name }}UpdateRequest;
+use App\Http\Resources\{{ model_name }}\{{ model_name }}Collection;
+use App\Http\Resources\{{ model_name }}\{{ model_name }}Resource;
+use On1kel\HyperfFlyDocs\Generator\Attributes\Complex;
+use On1kel\HyperfFlyDocs\Generator\Attributes\Operation;
+
+#[Controller(prefix: 'api/{{ prefix }}/{{ model_name_lower }}')]
+final class {{ controller_name }} extends ApiCRUDController
+{
+    use WithDBTransaction;
+
+    /**
+     * @throws UnknownProperties
+     * @throws ReflectionException
+     */
+    public function __construct()
+    {
+        parent::__construct(new ApiCRUDControllerMetaDTO([
+            'model_class'                => {{ model_name }}::class,
+            'single_resource_class'      => {{ model_name }}Resource::class,
+            'collection_resource_class'  => {{ model_name }}Collection::class,
+        ]));
+    }
+
+    /**
+     * Поиск сущностей
+     *
+     * @throws ReflectionException
+     * @throws UnknownProperties
+     * @throws JsonException
+     */
+    #[PostMapping(path: '/search')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: IndexActionComplex::class,
+        model_class: {{ model_name }}::class,
+        collection_resource: {{ model_name }}Collection::class,
+        options: []
+    )]
+    public function index(IndexRequest $request): mixed
+    {
+        return $this->indexAction(
+            request: $request,
+            options: []
+        );
+    }
+
+    /**
+     * Позиционирование сущностей
+     *
+     * @throws UnknownProperties
+     * @throws Throwable
+     */
+    #[PostMapping(path: '/setPosition')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: SetPositionActionComplex::class,
+        model_class: {{ model_name }}::class,
+        options: []
+    )]
+    public function setPosition(SetPositionRequest $request): ResponseInterface
+    {
+        return $this->setPositionAction(
+            request: $request,
+            options: []
+        );
+    }
+
+    /**
+     * Массовое удаление сущностей
+     *
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws Throwable
+     * @throws UnknownProperties
+     */
+    #[PostMapping(path: '/bulkDestroy')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: BulkDestroyActionComplex::class,
+        model_class: {{ model_name }}::class,
+        options: []
+    )]
+    public function bulkDestroy(BulkDestroyRequest $request): ResponseInterface
+    {
+        return $this->bulkDestroyAction(
+            request: $request,
+            options: [],
+            closure: static function (ActionClosureDataDTO $closure_dto) {
+                if ($closure_dto->mode === ActionClosureModeEnum::AfterDeleting) {
+                    // do something...
+                }
+            }
+        );
+    }
+
+    /**
+     * Создание сущности
+     *
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws Throwable
+     * @throws UnknownProperties
+     */
+    #[PostMapping(path: '')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: StoreActionComplex::class,
+        model_class: {{ model_name }}::class,
+        single_resource: {{ model_name }}Resource::class,
+        validation_request: {{ model_name }}StoreRequest::class,
+        options: []
+    )]
+    public function store({{ model_name }}StoreRequest $request): ResponseInterface
+    {
+        return $this->storeAction(
+            request: $request,
+            options: [],
+            closure: static function (ActionClosureDataDTO $closure_dto) {
+                if ($closure_dto->mode === ActionClosureModeEnum::BeforeFilling) {
+                    // do something...
+                }
+            }
+        );
+    }
+
+    /**
+     * Получение сущности по идентификатору
+     *
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws UnknownProperties
+     */
+    #[GetMapping(path: '/{key}')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: ShowActionComplex::class,
+        model_class: {{ model_name }}::class,
+        single_resource: {{ model_name }}Resource::class,
+        options: []
+    )]
+    public function show(string $key): ResponseInterface
+    {
+        return $this->showAction(
+            key: $key,
+            options: []
+        );
+    }
+
+    /**
+     * Изменение сущности по идентификатору
+     *
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws Throwable
+     * @throws UnknownProperties
+     */
+    #[PutMapping(path: '/{key}')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: UpdateActionComplex::class,
+        model_class: {{ model_name }}::class,
+        single_resource: {{ model_name }}Resource::class,
+        validation_request: {{ model_name }}UpdateRequest::class,
+        options: []
+    )]
+    public function update({{ model_name }}UpdateRequest $request, string $key): ResponseInterface
+    {
+        return $this->updateAction(
+            request: $request,
+            key: $key,
+            options: [],
+            closure: static function (ActionClosureDataDTO $closure_dto) {
+                if ($closure_dto->mode === ActionClosureModeEnum::AfterSave) {
+                    // do something...
+                }
+            }
+        );
+    }
+
+    /**
+     * Удаление сущности по идентификатору
+     *
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws Throwable
+     * @throws UnknownProperties
+     */
+    #[DeleteMapping(path: '/{key}')]
+    #[Operation(tags: ['{{ model_name }}'])]
+    #[Complex(
+        factory: DestroyActionComplex::class,
+        model_class: {{ model_name }}::class,
+        options: []
+    )]
+    public function destroy(string $key): ResponseInterface
+    {
+        return $this->destroyAction(
+            key: $key,
+            options: [],
+            closure: static function (ActionClosureDataDTO $closure_dto) {
+                if ($closure_dto->mode === ActionClosureModeEnum::BeforeDeleting) {
+                    // do something...
+                }
+            }
+        );
+    }
+}

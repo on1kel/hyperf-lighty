@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
+use Hyperf\Database\Model\Events\Created;
+use Hyperf\Database\Model\Events\Creating;
+use Hyperf\Database\Model\Events\Deleted;
+use Hyperf\Database\Model\Events\Deleting;
+use Hyperf\Database\Model\Events\Updated;
+use Hyperf\Database\Model\Events\Updating;
+
+// Конфиг событий для модели {{ model_name }}.
+// Порядок в массивах определяет порядок выполнения Action-классов.
+// Пример добавления:
+// Updating::class => [\App\Domain\{{ model_name }}\Actions\SomeGuard::class],
+// Updated::class  => [\App\Domain\{{ model_name }}\Actions\DoSomething::class],
+
+return [
+    Creating::class => [
+    ],
+    Created::class => [
+    ],
+    Updating::class => [
+    ],
+    Updated::class => [
+    ],
+    Deleting::class => [
+    ],
+    Deleted::class => [
+    ],
+];

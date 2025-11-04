@@ -1,0 +1,79 @@
+{
+  "name": "on1kel/hyperf-lighty",
+  "type": "library",
+  "version": "1.0.x-dev",
+  "description": "Набор инструментов для быстрого создания REST API на фреймворке Hyperf. Включает поддержку CRUD-операций, валидации, ресурсов, событий моделей и автоматическую генерацию документации OpenAPI.",
+  "keywords": [
+    "hyperf",
+    "api",
+    "rest",
+    "crud"
+  ],
+  "license": "MIT",
+  "require": {
+    "php": "^8.1",
+    "ext-json": "*",
+    "ext-sodium": "*",
+    "hyperf/async-queue": "^3.1",
+    "hyperf/command": "^3.1",
+    "hyperf/database": "^3.1",
+    "hyperf/db-connection": "^3.1",
+    "hyperf/event": "^3.1",
+    "hyperf/http-message": "^3.1",
+    "hyperf/http-server": "^3.1",
+    "hyperf/resource": "^3.1",
+    "hyperf/support": "^3.1",
+    "hyperf/validation": "^3.1",
+    "on1kel/hyperf-fly-docs": "^1.0",
+    "khazhinov/php-support": "^1.1",
+    "psr/simple-cache": "^3.0",
+    "ramsey/uuid": "^4.9",
+    "spatie/data-transfer-object": "^3.8"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "hyperf/framework": "^3.0",
+    "phpstan/phpstan": "^2.1",
+    "cweagans/composer-patches": "^1.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "On1kel\\HyperfLighty\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "phpstan/extension-installer": true,
+      "cweagans/composer-patches": true
+    }
+  },
+  "extra": {
+    "hyperf": {
+      "config": "On1kel\\HyperfLighty\\ConfigProvider"
+    },
+    "publish": [
+      {
+        "id": "model-events-map",
+        "description": "Publish model events map (model → events key)",
+        "source": "config/model_events.php",
+        "destination": "config/autoload/model_events.php"
+      },
+      {
+        "id": "model-events-example",
+        "description": "Publish example events config (attendance)",
+        "source": "config/events/attendance.php",
+        "destination": "config/events/attendance.php"
+      }
+    ]
+  },
+  "scripts": {
+    "analyse": "vendor/bin/phpstan analyse --configuration phpstan.neon --no-progress",
+    "format": "vendor/bin/php-cs-fixer fix --config cs_dist.php --allow-risky=yes --show-progress=none"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

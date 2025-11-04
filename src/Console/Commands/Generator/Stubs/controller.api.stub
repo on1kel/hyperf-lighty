@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ controller_namespace }};
+
+use JsonException;
+use On1kel\HyperfLighty\Http\Controllers\Api\ApiController;
+use On1kel\HyperfLighty\Transaction\WithDBTransaction;
+use On1kel\HyperfLighty\Transaction\WithDBTransactionInterface;
+use Psr\Http\Message\ResponseInterface;
+use Hyperf\HttpServer\Annotation\GetMapping;
+use ReflectionException;
+use Spatie\DataTransferObject\Exceptions\UnknownProperties;
+use Hyperf\HttpServer\Annotation\Controller;
+
+#[Controller(prefix: 'api/{{ prefix }}/{{ model_name_lower }}')]
+final class {{ controller_name }} extends ApiController implements WithDBTransactionInterface
+{
+    use WithDBTransaction;
+
+    /**
+     * @throws JsonException
+     * @throws ReflectionException
+     * @throws UnknownProperties
+     */
+     #[GetMapping(path: '/testFunction')]
+    public function testFunction(): ResponseInterface
+    {
+        return $this->respond(
+            $this->buildActionResponseDTO(
+                data: ['Awesome!']
+            )
+        );
+    }
+}
