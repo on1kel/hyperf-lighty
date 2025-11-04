@@ -1,7 +1,6 @@
 {
   "name": "on1kel/hyperf-lighty",
   "type": "library",
-  "version": "1.0.x-dev",
   "description": "Набор инструментов для быстрого создания REST API на фреймворке Hyperf. Включает поддержку CRUD-операций, валидации, ресурсов, событий моделей и автоматическую генерацию документации OpenAPI.",
   "keywords": [
     "hyperf",
@@ -50,6 +49,9 @@
       "phpstan/extension-installer": true,
       "cweagans/composer-patches": true
     }
+  },
+  "suggest": {
+    "friendsofhyperf/ide-helper": "Рекомендуется для автогенерации IDE подсказок и корректной работы автоматической документации OpenApi"
   },
   "extra": {
     "hyperf": {
