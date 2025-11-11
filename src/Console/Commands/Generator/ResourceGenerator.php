@@ -57,7 +57,7 @@ final class ResourceGenerator extends BaseGenerator
     public function initGeneratorParams(): void
     {
         // Локация ресурсов в проекте:
-        $this->default_generator_namespace = 'App\\Http\\Resources';
+        $this->default_generator_namespace = 'App\\Resources';
         $this->default_generator_dir = 'Http/Resources';
     }
 

@@ -38,7 +38,7 @@ final class RequestGenerator extends BaseGenerator
 
     public function initGeneratorParams(): void
     {
-        $this->default_generator_namespace = 'App\\Http\\Requests';
+        $this->default_generator_namespace = 'App\\Requests';
         $this->default_generator_dir = 'Http/Requests';
     }
 
