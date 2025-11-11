@@ -62,7 +62,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws UnknownProperties
      * @throws JsonException
      */
-    #[PostMapping(path: '/search')]
+    #[PostMapping(path: 'search')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: IndexActionComplex::class,
@@ -84,7 +84,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws UnknownProperties
      * @throws Throwable
      */
-    #[PostMapping(path: '/setPosition')]
+    #[PostMapping(path: 'setPosition')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: SetPositionActionComplex::class,
@@ -107,7 +107,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws Throwable
      * @throws UnknownProperties
      */
-    #[PostMapping(path: '/bulkDestroy')]
+    #[PostMapping(path: 'bulkDestroy')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: BulkDestroyActionComplex::class,
@@ -164,7 +164,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws ReflectionException
      * @throws UnknownProperties
      */
-    #[GetMapping(path: '/{key}')]
+    #[GetMapping(path: '{key}')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: ShowActionComplex::class,
@@ -188,7 +188,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws Throwable
      * @throws UnknownProperties
      */
-    #[PutMapping(path: '/{key}')]
+    #[PutMapping(path: '{key}')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: UpdateActionComplex::class,
@@ -219,7 +219,7 @@ final class {{ controller_name }} extends ApiCRUDController
      * @throws Throwable
      * @throws UnknownProperties
      */
-    #[DeleteMapping(path: '/{key}')]
+    #[DeleteMapping(path: '{key}')]
     #[Operation(tags: ['{{ model_name }}'])]
     #[Complex(
         factory: DestroyActionComplex::class,
