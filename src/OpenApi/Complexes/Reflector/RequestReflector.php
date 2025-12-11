@@ -71,33 +71,23 @@ final class RequestReflector
      */
     private function buildSchemaFromRules(array $rules): Schema
     {
+        // Строим дерево правил (root-узел без имени)
+        $tree = $this->buildRulesTree($rules);
+
+        // Корневой объект тела запроса
         $schema = Schema::object();
 
-        foreach ($rules as $name => $rule) {
-            $ruleString = is_array($rule) ? implode('|', $rule) : (string)$rule;
+        // Дети root-а — это верхнеуровневые поля (data, settings и т.п.)
+        foreach ($tree['children'] as $name => $node) {
+            $prop = $this->nodeToSchema($node, $name);
 
-            // Определяем тип
-            $type = $this->inferTypeFromRule($ruleString);
-
-            // Создаём Schema для свойства
-            $prop = match ($type) {
-                'integer' => Schema::integer($name),
-                'number' => Schema::number($name),
-                'boolean' => Schema::boolean($name),
-                'array' => Schema::array($name),
-                'file' => Schema::string($name)->format('binary'),
-                default => Schema::string($name),
-            };
-
-            if (str_contains($ruleString, 'nullable')) {
+            if ($node['nullable']) {
                 $prop = $prop->nullable(true);
             }
 
-
-
             $schema = $schema->propertiesNamed([$name => $prop]);
 
-            if (str_contains($ruleString, 'required')) {
+            if ($node['required']) {
                 $schema = $schema->required($name);
             }
         }
@@ -105,9 +95,6 @@ final class RequestReflector
         return $schema;
     }
 
-    /**
-     * Упрощённый детектор типа по строке правила.
-     */
     private function inferTypeFromRule(string $rule): string
     {
         $lower = strtolower($rule);
@@ -128,6 +115,7 @@ final class RequestReflector
             default => 'string',
         };
     }
+
 
     /**
      * Определяет Media Type по схеме.
@@ -250,5 +238,175 @@ final class RequestReflector
         }
 
         return new HyperfServerRequest('GET', '/fly-docs');
+    }
+// ─────────────────────────── RULES TREE ───────────────────────────
+
+    /**
+     * Узел дерева правил.
+     *
+     * @return array{
+     *     type: ?string,
+     *     rules: ?string,
+     *     required: bool,
+     *     nullable: bool,
+     *     children: array<string, array>,
+     *     wildcard: ?array
+     * }
+     */
+    private function makeEmptyNode(): array
+    {
+        return [
+            'type' => null,        // 'string'|'integer'|'number'|'boolean'|'file'|'array'|null
+            'rules' => null,       // сырая строка правил
+            'required' => false,
+            'nullable' => false,
+            'children' => [],
+            'wildcard' => null,
+        ];
+    }
+
+    /**
+     * Строим дерево правил по dot-нотации и "*".
+     *
+     * Примеры:
+     * - data               → root.children['data']
+     * - data.name          → root.children['data'].children['name']
+     * - data.*             → root.children['data'].wildcard
+     * - data.*.name        → root.children['data'].wildcard.children['name']
+     *
+     * @param array<string, mixed> $rules
+     * @return array
+     */
+    private function buildRulesTree(array $rules): array
+    {
+        $root = $this->makeEmptyNode();
+
+        foreach ($rules as $name => $rule) {
+            $ruleString = is_array($rule) ? implode('|', $rule) : (string)$rule;
+            $type       = $this->inferTypeFromRule($ruleString);
+
+            $segments = explode('.', (string)$name);
+            $current  =& $root;
+
+            foreach ($segments as $index => $segment) {
+                $isLast = ($index === array_key_last($segments));
+
+                if ($segment === '*') {
+                    if ($current['wildcard'] === null) {
+                        $current['wildcard'] = $this->makeEmptyNode();
+                    }
+                    $current =& $current['wildcard'];
+                } else {
+                    if (! isset($current['children'][$segment])) {
+                        $current['children'][$segment] = $this->makeEmptyNode();
+                    }
+                    $current =& $current['children'][$segment];
+                }
+
+                if ($isLast) {
+                    $current['rules']    = $ruleString;
+                    $current['type']     = $type;
+                    $current['required'] = str_contains($ruleString, 'required');
+                    $current['nullable'] = str_contains($ruleString, 'nullable');
+                }
+            }
+        }
+
+        return $root;
+    }
+
+    /**
+     * Преобразование узла дерева в Schema.
+     *
+     * @param array $node
+     * @param string|null $name имя свойства (null для анонимных узлов — items и т.п.)
+     */
+    private function nodeToSchema(array $node, ?string $name = null): Schema
+    {
+        // 1. Если есть wildcard → это массив (data.*)
+        if ($node['wildcard'] !== null) {
+            // Массив элементов; схема элемента = wildcard-узел
+            $itemsSchema = $this->nodeToSchema($node['wildcard'], null);
+
+            // ПРЕДПОЛОЖЕНИЕ:
+            // У Schema::array($name) есть метод items(Schema $schema).
+            // Если у тебя другой метод для items — просто замени его здесь.
+            $schema = Schema::array($name ?? 'item');
+            $schema = $schema->items($itemsSchema);
+
+            if ($node['nullable']) {
+                $schema = $schema->nullable(true);
+            }
+
+            return $schema;
+        }
+
+        // 2. Если есть именованные дети → объект
+        if (! empty($node['children'])) {
+            // Объект; имя самого свойства задаётся выше через propertiesNamed()
+            $schema = Schema::object();
+
+            foreach ($node['children'] as $childName => $childNode) {
+                $childSchema = $this->nodeToSchema($childNode, $childName);
+
+                if ($childNode['nullable']) {
+                    $childSchema = $childSchema->nullable(true);
+                }
+
+                $schema = $schema->propertiesNamed([$childName => $childSchema]);
+
+                if ($childNode['required']) {
+                    $schema = $schema->required($childName);
+                }
+            }
+
+            if ($node['nullable']) {
+                $schema = $schema->nullable(true);
+            }
+
+            return $schema;
+        }
+
+        // 3. Лист, тип = array → «произвольный объект» (any_custom_data)
+        if ($node['type'] === 'array') {
+            $object = Schema::object();
+
+            // Здесь мы показываем, что внутри — любые кастомные ключи (string).
+            $dummy = Schema::string('any_custom_data');
+            $object = $object->propertiesNamed([
+                'any_custom_data' => $dummy,
+            ]);
+
+            if ($node['nullable']) {
+                $object = $object->nullable(true);
+            }
+
+            return $object;
+        }
+
+        // 4. Обычный скаляр
+        $schema = $this->makeScalarSchema($node['type'], $name);
+
+        if ($node['nullable']) {
+            $schema = $schema->nullable(true);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Создаёт скалярную Schema по типу, который вернул inferTypeFromRule().
+     */
+    private function makeScalarSchema(?string $type, ?string $name): Schema
+    {
+        $fieldName = $name ?? '';
+
+        return match ($type) {
+            'integer' => Schema::integer($fieldName),
+            'number'  => Schema::number($fieldName),
+            'boolean' => Schema::boolean($fieldName),
+            'file'    => Schema::string($fieldName)->format('binary'),
+            default   => Schema::string($fieldName),
+        };
     }
 }
