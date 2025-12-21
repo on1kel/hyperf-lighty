@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace On1kel\HyperfLighty\Exceptions;
 
 use Hyperf\Contract\ConfigInterface;
+use Hyperf\Contract\TranslatorInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Base\Response as BaseResponse;
 use Hyperf\HttpMessage\Stream\SwooleStream;
@@ -36,7 +37,10 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
 //        \HyperfExt\Auth\Exceptions\AuthenticationException::class,
     ];
 
-    public function __construct(private readonly ConfigInterface $config)
+    public function __construct(
+        private readonly ConfigInterface $config,
+        private readonly TranslatorInterface $translator
+    )
     {
     }
 
@@ -51,6 +55,12 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
      */
     public function handle(Throwable $throwable, ResponsePlusInterface $response): ResponsePlusInterface
     {
+        if ($this->isAllowed($throwable)) {
+            $throwable = $this->translateAllowedException($throwable);
+        } else {
+            $throwable = $this->maskThrowable($throwable);
+        }
+
         $errorData = $this->isValidationException($throwable)
             ? $this->extractValidationErrors($throwable)
             : $throwable->getMessage();
@@ -158,5 +168,63 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
         //            return 401;
         //        }
         return 400;
+    }
+
+    private function isAllowed(Throwable $e): bool
+    {
+        if ($e instanceof ValidationException) {
+            return true;
+        }
+        if ($this->config->get('lighty.exceptions.expose_unknown_error_details', false)){
+            return true;
+        }
+        /** @var array<int, class-string> $allowed */
+        $allowed = (array) $this->config->get('lighty.exceptions.allowed', []);
+
+        foreach ($allowed as $fqcn) {
+            if (is_string($fqcn) && class_exists($fqcn) && $e instanceof $fqcn) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function maskThrowable(Throwable $e): Throwable
+    {
+        // Локализованный fallback
+        $key = (string) $this->config->get('lighty.exceptions.fallback_message_key', 'errors.something_went_wrong');
+        $text = (string) $this->config->get('lighty.exceptions.fallback_message_text', 'Something went wrong.');
+        $message = $this->translator->trans($key);
+
+
+        if ($message === $key) {
+            $message = $text;
+        }
+
+        return new UndefinedException($message);
+    }
+
+    private function translateAllowedException(Throwable $e): Throwable
+    {
+        $message = $e->getMessage();
+
+        if ($message === '') {
+            return $e;
+        }
+
+        $key = 'errors.' . $message;
+        $translated = $this->translator->trans($key);
+
+        if ($translated === $key) {
+            return $e;
+        }
+
+
+        return new ($e::class)(
+            $translated,
+            (int) $e->getCode(),
+            $e->getPrevious()
+        );
     }
 }

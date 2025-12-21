@@ -46,4 +46,18 @@ return [
         'cache_key' => 'lighty.ide_helper.models.parsed',
         'cache_ttl' => 86400, // 1 день
     ],
+    'exceptions' => [
+        'allowed' => [
+            // Пример:
+            // \App\Exception\DomainException::class,
+            // \Hyperf\Validation\ValidationException::class,
+        ],
+
+        // Сообщение по умолчанию (ключ перевода или текст).
+        'fallback_message_key' => 'errors.something_went_wrong',
+        'fallback_message_text' => 'Something went wrong.',
+
+        // Если true — даже для "неразрешённых" отдаём errorData (опасно).
+        'expose_unknown_error_details' => env('EXPOSE_UNKNOWN_ERROR_DETAILS', false),
+    ]
 ];

@@ -59,6 +59,12 @@ final class ConfigProvider
                 'source' => __DIR__ . '/../config/events/example.php',
                 'destination' => \BASE_PATH . '/config/events/example.php',
             ],
+            [
+                'id' => 'storage-languages',
+                'description' => 'Publish storage languages (en/ru) with errors.php',
+                'source' => __DIR__ . '/../storage/languages',
+                'destination' => \BASE_PATH . '/storage/languages',
+            ],
         ];
 
         $annotationScan = [
