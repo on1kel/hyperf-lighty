@@ -48,6 +48,12 @@ final class ConfigProvider
          */
         $packagePublish = [
             [
+                'id' => 'lighty',
+                'description' => 'Publish core config',
+                'source' => __DIR__ . '/../config/lighty.php',
+                'destination' => \BASE_PATH . '/config/autoload/lighty.php',
+            ],
+            [
                 'id' => 'model-events-map',
                 'description' => 'Publish model events map (model → events key)',
                 'source' => __DIR__ . '/../config/model_events.php',
