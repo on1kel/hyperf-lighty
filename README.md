@@ -174,26 +174,39 @@ php bin/hyperf.php vendor:publish on1kel/hyperf-lighty
 <?php
 declare(strict_types=1);
 
-use App\Process\Attributes\Roles;
 use Hyperf\Di\ReflectionManager;
+use On1kel\HyperfLighty\Attributes\Process\DeployRoles;
 
 $rolesEnv = env('APP_ROLES', 'api');
-$enabledRoles = array_values(array_filter(array_map('trim', explode(',', $rolesEnv))));
-$enabledRoles = $enabledRoles ?: ['api'];
+$enabledRoles = array_values(array_filter(array_map('trim', explode(',', $rolesEnv))))
+    ?: ['api'];
 
 $registry = require __DIR__ . '/process_registry.php';
 
 $enabled = [];
-foreach ($registry as $class) {
-    $ref = ReflectionManager::reflectClass($class);
-    $attrs = $ref->getAttributes(Roles::class);
 
-    // Процессы без ролей считаются универсальными
+foreach ($registry as $key => $value) {
+    // ===== Вариант 1: Явная карта ролей =====
+    if (is_string($key) && is_array($value)) {
+        if (array_intersect($enabledRoles, $value)) {
+            $enabled[] = $key;
+        }
+        continue;
+    }
+
+    // ===== Вариант 2: Класс с атрибутом или универсальный =====
+    $class = $value;
+
+    $ref = ReflectionManager::reflectClass($class);
+    $attrs = $ref->getAttributes(DeployRoles::class);
+
+    // Нет атрибута → универсальный процесс
     if ($attrs === []) {
         $enabled[] = $class;
         continue;
     }
 
+    /** @var DeployRoles $roles */
     $roles = $attrs[0]->newInstance();
     if (array_intersect($enabledRoles, $roles->roles)) {
         $enabled[] = $class;
@@ -255,6 +268,50 @@ final class QueueConsumerProcess extends ConsumerProcess {}
 * использовать стандартные компоненты Hyperf;
 * контролировать их запуск **без условий и if-логики**;
 * централизованно управлять поведением через `APP_ROLES`.
+
+---
+
+### Поддержка процессов из внешних пакетов (`final`, без атрибутов)
+
+Не все процессы можно или целесообразно помечать атрибутами ролей:
+
+* класс объявлен как `final`;
+* процесс находится во внешнем пакете;
+* пакет не должен знать о деплое и инфраструктуре.
+
+Для таких случаев `process_registry.php` поддерживает **явное назначение ролей**.
+
+```php
+<?php
+declare(strict_types=1);
+
+use Cubekit\Kafka\Hyperf\Process\InboxKafkaConsumerProcess;
+use Cubekit\Kafka\Hyperf\Process\OutboxKafkaConsumerProcess;
+use On1kel\HyperfLighty\Process\CronProcess;
+use On1kel\HyperfLighty\Process\QueueConsumerProcess;
+
+return [
+    // Явное назначение ролей (final / внешние пакеты)
+    InboxKafkaConsumerProcess::class => ['kafka'],
+    OutboxKafkaConsumerProcess::class => ['kafka'],
+
+    // Процессы с атрибутами DeployRoles
+    CronProcess::class,
+    QueueConsumerProcess::class,
+];
+```
+
+Таким образом:
+
+* пакет Kafka **не зависит** от `hyperf-lighty`;
+* роли определяются **исключительно на уровне приложения**;
+* деплой остаётся декларативным и прозрачным.
+
+Приоритет правил:
+
+1. Явное указание ролей в `process_registry.php`
+2. Атрибут `DeployRoles`
+3. Отсутствие ролей → процесс считается универсальным
 
 ---
 

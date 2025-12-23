@@ -96,7 +96,6 @@ final class ConfigProvider
             \On1kel\HyperfLighty\Domain\Support\TransactionRunner::class => \On1kel\HyperfLighty\Domain\Support\TransactionRunner::class,
             \On1kel\HyperfLighty\OpenApi\Complexes\Reflector\ModelReflector::class => \On1kel\HyperfLighty\OpenApi\Complexes\Reflector\ModelReflector::class,
             \On1kel\HyperfLighty\OpenApi\Complexes\Reflector\IdeHelperModelsReaderInterface::class => \On1kel\HyperfLighty\OpenApi\Complexes\Reflector\IdeHelperModelsReader::class,
-
         ];
 
         /**

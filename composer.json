@@ -21,6 +21,7 @@
     "hyperf/event": "^3.1",
     "hyperf/http-message": "^3.1",
     "hyperf/http-server": "^3.1",
+    "hyperf/logger": "^3.1",
     "hyperf/resource": "^3.1",
     "hyperf/support": "^3.1",
     "hyperf/validation": "^3.1",
