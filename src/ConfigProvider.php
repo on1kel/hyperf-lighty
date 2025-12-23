@@ -71,6 +71,12 @@ final class ConfigProvider
                 'source' => __DIR__ . '/../storage/languages',
                 'destination' => \BASE_PATH . '/storage/languages',
             ],
+            [
+                'id' => 'process-registry',
+                'description' => 'Publish process registry',
+                'source' => __DIR__ . '/../config/process_registry.php',
+                'destination' => \BASE_PATH . '/config/autoload/process_registry.php',
+            ],
         ];
 
         $annotationScan = [

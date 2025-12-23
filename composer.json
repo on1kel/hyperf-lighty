@@ -15,6 +15,7 @@
     "ext-sodium": "*",
     "hyperf/async-queue": "^3.1",
     "hyperf/command": "^3.1",
+    "hyperf/crontab": "^3.1",
     "hyperf/database": "^3.1",
     "hyperf/db-connection": "^3.1",
     "hyperf/event": "^3.1",
@@ -23,8 +24,8 @@
     "hyperf/resource": "^3.1",
     "hyperf/support": "^3.1",
     "hyperf/validation": "^3.1",
-    "on1kel/hyperf-fly-docs": "^1.0",
     "khazhinov/php-support": "^1.1",
+    "on1kel/hyperf-fly-docs": "^1.0",
     "psr/simple-cache": "^3.0",
     "ramsey/uuid": "^4.9",
     "spatie/data-transfer-object": "^3.8"

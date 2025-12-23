@@ -92,10 +92,12 @@ _ide_helper_models.php
 
 > **Совет:** рекомендуется добавить команду генерации в ваши dev-скрипты Composer, например:
 > ```json
-> "scripts": {
->     "post-install-cmd": [
->         "@php bin/hyperf.php ide-helper:model"
->     ]
+> {
+>   "scripts": {
+>       "post-install-cmd": [
+>           "@php bin/hyperf.php ide-helper:model"
+>       ]
+>   }
 > }
 > ```
 
@@ -126,6 +128,156 @@ src/
 ```bash
 php bin/hyperf.php ide-helper:model
 ```
+
+Ниже — **продуктовое, аккуратное описание**, без учебного тона и лишней техники, с акцентом на **зачем**, **что даёт**, **как использовать в проде**.
+
+---
+
+## 5. Разделение процессов по ролям (для запуска в отдельных контейнерах)
+
+Пакет **`on1kel/hyperf-lighty`** вводит единый, декларативный механизм управления процессами Hyperf, предназначенный для **чёткого разделения ролей приложения** и безопасного деплоя в Docker/Kubernetes.
+
+Цель:
+
+* запускать разные группы процессов в **разных контейнерах** (`api`, `queue`, `cron`, и т.д.);
+* исключить дублирование cron/consumer при горизонтальном масштабировании;
+* сохранить **один Docker-образ** и управлять поведением через переменные окружения.
+
+---
+
+### Публикация конфигурации
+
+Опубликуйте конфигурацию пакета:
+
+```bash
+php bin/hyperf.php vendor:publish on1kel/hyperf-lighty
+```
+
+После публикации конфиг пакета становится **единственным источником истины** для определения:
+
+* какие процессы существуют в приложении;
+* в каких ролях они могут запускаться.
+
+---
+
+### Замена стандартного `processes.php`
+
+Замените стандартный `config/autoload/processes.php` на версию, предоставляемую пакетом.
+
+Этот файл:
+
+* читает активные роли из `APP_ROLES`;
+* фильтрует процессы на основе атрибутов ролей;
+* возвращает **строго тот набор процессов**, который допустим для текущего контейнера.
+
+```php
+<?php
+declare(strict_types=1);
+
+use App\Process\Attributes\Roles;
+use Hyperf\Di\ReflectionManager;
+
+$rolesEnv = env('APP_ROLES', 'api');
+$enabledRoles = array_values(array_filter(array_map('trim', explode(',', $rolesEnv))));
+$enabledRoles = $enabledRoles ?: ['api'];
+
+$registry = require __DIR__ . '/process_registry.php';
+
+$enabled = [];
+foreach ($registry as $class) {
+    $ref = ReflectionManager::reflectClass($class);
+    $attrs = $ref->getAttributes(Roles::class);
+
+    // Процессы без ролей считаются универсальными
+    if ($attrs === []) {
+        $enabled[] = $class;
+        continue;
+    }
+
+    $roles = $attrs[0]->newInstance();
+    if (array_intersect($enabledRoles, $roles->roles)) {
+        $enabled[] = $class;
+    }
+}
+
+return $enabled;
+```
+
+---
+
+### Назначение ролей процессам
+
+Для указания ролей используется атрибут **`DeployRoles`**.
+Процесс сам декларативно описывает, **в каких ролях он допустим**.
+
+#### Пример: процесс cron
+
+```php
+<?php
+
+namespace On1kel\HyperfLighty\Process;
+
+use Hyperf\Crontab\Process\CrontabDispatcherProcess;
+use On1kel\HyperfLighty\Attributes\Process\DeployRoles;
+
+#[DeployRoles(['cron'])]
+final class CronProcess extends CrontabDispatcherProcess {}
+```
+
+Такой процесс будет запущен **только** в контейнере с:
+
+```env
+APP_ROLES=cron
+```
+
+---
+
+### Переопределение стандартных процессов Hyperf
+
+Пакет предоставляет собственные реализации стандартных процессов Hyperf с уже назначенными ролями.
+
+#### Cron
+
+```php
+#[DeployRoles(['cron'])]
+final class CronProcess extends CrontabDispatcherProcess {}
+```
+
+#### Queue consumers
+
+```php
+#[DeployRoles(['queue'])]
+final class QueueConsumerProcess extends ConsumerProcess {}
+```
+
+Это позволяет:
+
+* использовать стандартные компоненты Hyperf;
+* контролировать их запуск **без условий и if-логики**;
+* централизованно управлять поведением через `APP_ROLES`.
+
+---
+
+### Как это используется в контейнерах
+
+Один и тот же Docker-образ, разные роли:
+
+```yaml
+hyperf-api:
+  environment:
+    APP_ROLES: api
+
+hyperf-queue:
+  environment:
+    APP_ROLES: queue
+
+hyperf-cron:
+  environment:
+    APP_ROLES: cron
+```
+
+Каждый контейнер поднимает **только свой набор процессов**, без риска дублирования.
+
 ---
 
 ## Безопасность
