@@ -337,6 +337,120 @@ hyperf-cron:
 
 ---
 
+## 6. Единый логгер и вывод в stdout (prod-ready)
+
+`on1kel/hyperf-lighty` предоставляет готовое решение для **унификации логирования** в Hyperf-приложениях и корректной работы в Docker / Kubernetes.
+
+### Проблема, которую решает пакет
+
+По умолчанию в Hyperf существуют **два разных источника логов**:
+
+* логи приложения — через `monolog` и `config/autoload/logger.php`;
+* системные логи Hyperf (startup, workers, signals) — через `StdoutLogger`, использующий `print_r()`.
+
+Это приводит к проблемам в проде:
+
+* смешанные форматы логов;
+* отсутствие структурированных данных;
+* невозможность нормально парсить stdout лог-агрегаторами (Loki / ELK / CloudWatch);
+* “мусорные” строки в логах при инцидентах.
+
+---
+
+### Что делает Hyperf Lighty
+
+Пакет предоставляет **production-ready реализацию `StdoutLoggerFactory`**, которая:
+
+* подменяет стандартный `StdoutLogger` Hyperf;
+* перенаправляет **все системные логи фреймворка** в Monolog;
+* использует **единый формат и уровни логирования**;
+* полностью совместима с `config/autoload/logger.php`.
+
+В результате:
+
+* **все логи** (и приложения, и фреймворка) проходят через Monolog;
+* stdout/stderr становятся управляемыми и предсказуемыми;
+* логирование готово к прод-эксплуатации.
+
+---
+
+### Подключение StdoutLoggerFactory
+
+В каждом приложении биндинг выполняется **один раз** — в `config/autoload/dependencies.php`:
+
+```php
+return [
+    \Hyperf\Contract\StdoutLoggerInterface::class
+        => \On1kel\HyperfLighty\Logger\StdoutLoggerFactory::class,
+];
+```
+
+После этого:
+
+* Hyperf перестаёт писать `print_r()` в stdout;
+* все системные сообщения логируются через Monolog (channel `sys`).
+
+---
+
+### Настройка формата логов (`logger.php`)
+
+`StdoutLoggerFactory` **не заменяет** конфигурацию логов — она лишь направляет вывод в Monolog.
+Формат, уровни и handlers задаются стандартным способом через `config/autoload/logger.php`.
+
+Рекомендуемая схема:
+
+* **dev / local** — человекочитаемые логи (LineFormatter, с цветами);
+* **prod** — структурированные JSON-логи.
+
+Пример минимальной конфигурации:
+
+```php
+<?php
+declare(strict_types=1);
+
+use Monolog\Formatter\JsonFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Level;
+
+return [
+    'default' => [
+        'handler' => [
+            'class' => StreamHandler::class,
+            'constructor' => [
+                'stream' => 'php://stdout',
+                'level' => Level::Info,
+            ],
+        ],
+        'formatter' => [
+            'class' => JsonFormatter::class,
+            'constructor' => [
+                'appendNewline' => true,
+            ],
+        ],
+    ],
+];
+```
+
+> ⚠️ В Docker/Kubernetes **рекомендуется использовать только stdout/stderr**, без файловых логов внутри контейнера.
+
+---
+
+### Каналы логирования
+
+Рекомендуется использовать **фиксированные каналы**, а не динамические имена:
+
+* `sys` — системные логи Hyperf;
+* `http` — HTTP-запросы;
+* `queue` — очереди;
+* `kafka.*` — Kafka consumers;
+* `cron` — cron-задачи.
+
+❗ **Не используйте request_id или user_id в качестве имени канала** — это приводит к утечкам памяти, так как `LoggerFactory` кеширует логгеры.
+
+Контекст (request_id, trace_id и т.п.) должен передаваться через `context` или processors.
+
+---
+
 ## Безопасность
 
 - Используется расширение `ext-sodium` для безопасного шифрования (`sodium_crypto_secretbox`).
