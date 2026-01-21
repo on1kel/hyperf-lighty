@@ -272,10 +272,10 @@ final class ModelGenerator extends BaseGenerator
             return true;
         }
 
-        $pattern = '/([\'"]map[\'"]\s*=>\s*\[\s*)(.*?)(\s*\],)/s';
+        $pattern = '/([\'"]map[\'"]\s*=>\s*\[\s*)(\n)?(\s*)(.*?)(\s*\],)/s';
         if (preg_match($pattern, $code, $m, PREG_OFFSET_CAPTURE)) {
-            $insert = "            \\{$fqcn}::class => '{$key}',\n";
-            $new = substr($code, 0, $m[2][1]) . $insert . substr($code, $m[2][1]);
+            $insert = "\n            \\{$fqcn}::class => '{$key}',";
+            $new = substr($code, 0, $m[1][1] + strlen($m[1][0])) . $insert . substr($code, $m[1][1] + strlen($m[1][0]));
             $ok = @file_put_contents($path, $new, LOCK_EX);
 
             if ($ok !== false) {
