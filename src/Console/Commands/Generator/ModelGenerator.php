@@ -189,7 +189,7 @@ final class ModelGenerator extends BaseGenerator
 
             return false;
         }
-        $model_lower = helper_string_lower($model);
+        $model_lower = strtolower($model);
         $path = $dir . '/' . $model_lower . '.php';
 
         if (file_exists($path)) {
