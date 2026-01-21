@@ -8,5 +8,7 @@ use Attribute;
 final class DeployRoles
 {
     /** @param string[] $roles */
-    public function __construct(public array $roles) {}
+    public function __construct(public array $roles)
+    {
+    }
 }

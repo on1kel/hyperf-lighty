@@ -6,4 +6,6 @@ use Hyperf\AsyncQueue\Process\ConsumerProcess;
 use On1kel\HyperfLighty\Attributes\Process\DeployRoles;
 
 #[DeployRoles(['queue'])]
-final class QueueConsumerProcess extends ConsumerProcess {}
+final class QueueConsumerProcess extends ConsumerProcess
+{
+}

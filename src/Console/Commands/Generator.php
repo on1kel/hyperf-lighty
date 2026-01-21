@@ -30,7 +30,7 @@ final class Generator extends BaseCommand
         $this->addArgument(
             'api_version',
             InputArgument::REQUIRED,
-            'Версия разрабатываемого API, например V1_0.'
+            'Версия разрабатываемого API, например v1.0.'
         );
 
         $this->addOption(

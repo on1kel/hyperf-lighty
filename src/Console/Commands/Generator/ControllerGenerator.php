@@ -71,8 +71,8 @@ final class ControllerGenerator extends BaseGenerator
     public function initGeneratorParams(): void
     {
         // Под Hyperf: контроллеры по умолчанию в App\Controller
-        $this->default_generator_namespace = 'App\\Controller';
-        $this->default_generator_dir = 'Controller';
+        $this->default_generator_namespace = 'App\\Http\\Controller';
+        $this->default_generator_dir = 'Http/Controller';
     }
 
     public function handle(): int

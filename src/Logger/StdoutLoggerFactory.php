@@ -1,5 +1,6 @@
 <?php
-declare(strict_types=1);
+
+declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Logger;
 
@@ -11,7 +12,6 @@ use Monolog\Level;
 use Monolog\Logger;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
-
 
 final class StdoutLoggerFactory
 {
@@ -38,16 +38,49 @@ final class StdoutLoggerFactory
         }
 
         return new class($logger) implements StdoutLoggerInterface {
-            public function __construct(private LoggerInterface $inner) {}
+            public function __construct(private LoggerInterface $inner)
+            {
+            }
 
-            public function emergency($message, array $context = []): void { $this->inner->emergency($message, $context); }
-            public function alert($message, array $context = []): void     { $this->inner->alert($message, $context); }
-            public function critical($message, array $context = []): void  { $this->inner->critical($message, $context); }
-            public function error($message, array $context = []): void     { $this->inner->error($message, $context); }
-            public function warning($message, array $context = []): void   { $this->inner->warning($message, $context); }
-            public function notice($message, array $context = []): void    { $this->inner->notice($message, $context); }
-            public function info($message, array $context = []): void      { $this->inner->info($message, $context); }
-            public function debug($message, array $context = []): void     { $this->inner->debug($message, $context); }
+            public function emergency($message, array $context = []): void
+            {
+                $this->inner->emergency($message, $context);
+            }
+
+            public function alert($message, array $context = []): void
+            {
+                $this->inner->alert($message, $context);
+            }
+
+            public function critical($message, array $context = []): void
+            {
+                $this->inner->critical($message, $context);
+            }
+
+            public function error($message, array $context = []): void
+            {
+                $this->inner->error($message, $context);
+            }
+
+            public function warning($message, array $context = []): void
+            {
+                $this->inner->warning($message, $context);
+            }
+
+            public function notice($message, array $context = []): void
+            {
+                $this->inner->notice($message, $context);
+            }
+
+            public function info($message, array $context = []): void
+            {
+                $this->inner->info($message, $context);
+            }
+
+            public function debug($message, array $context = []): void
+            {
+                $this->inner->debug($message, $context);
+            }
 
             public function log($level, $message, array $context = []): void
             {

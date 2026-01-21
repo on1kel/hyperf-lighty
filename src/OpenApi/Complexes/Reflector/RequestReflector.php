@@ -116,7 +116,6 @@ final class RequestReflector
         };
     }
 
-
     /**
      * Определяет Media Type по схеме.
      *
@@ -239,7 +238,7 @@ final class RequestReflector
 
         return new HyperfServerRequest('GET', '/fly-docs');
     }
-// ─────────────────────────── RULES TREE ───────────────────────────
+    // ─────────────────────────── RULES TREE ───────────────────────────
 
     /**
      * Узел дерева правил.
@@ -283,10 +282,10 @@ final class RequestReflector
 
         foreach ($rules as $name => $rule) {
             $ruleString = is_array($rule) ? implode('|', $rule) : (string)$rule;
-            $type       = $this->inferTypeFromRule($ruleString);
+            $type = $this->inferTypeFromRule($ruleString);
 
             $segments = explode('.', (string)$name);
-            $current  =& $root;
+            $current = &$root;
 
             foreach ($segments as $index => $segment) {
                 $isLast = ($index === array_key_last($segments));
@@ -295,17 +294,17 @@ final class RequestReflector
                     if ($current['wildcard'] === null) {
                         $current['wildcard'] = $this->makeEmptyNode();
                     }
-                    $current =& $current['wildcard'];
+                    $current = &$current['wildcard'];
                 } else {
                     if (! isset($current['children'][$segment])) {
                         $current['children'][$segment] = $this->makeEmptyNode();
                     }
-                    $current =& $current['children'][$segment];
+                    $current = &$current['children'][$segment];
                 }
 
                 if ($isLast) {
-                    $current['rules']    = $ruleString;
-                    $current['type']     = $type;
+                    $current['rules'] = $ruleString;
+                    $current['type'] = $type;
                     $current['required'] = str_contains($ruleString, 'required');
                     $current['nullable'] = str_contains($ruleString, 'nullable');
                 }
@@ -403,10 +402,10 @@ final class RequestReflector
 
         return match ($type) {
             'integer' => Schema::integer($fieldName),
-            'number'  => Schema::number($fieldName),
+            'number' => Schema::number($fieldName),
             'boolean' => Schema::boolean($fieldName),
-            'file'    => Schema::string($fieldName)->format('binary'),
-            default   => Schema::string($fieldName),
+            'file' => Schema::string($fieldName)->format('binary'),
+            default => Schema::string($fieldName),
         };
     }
 }

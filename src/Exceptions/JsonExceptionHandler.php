@@ -40,8 +40,7 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
     public function __construct(
         private readonly ConfigInterface $config,
         private readonly TranslatorInterface $translator
-    )
-    {
+    ) {
     }
 
     /**
@@ -175,7 +174,7 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
         if ($e instanceof ValidationException) {
             return true;
         }
-        if ($this->config->get('lighty.exceptions.expose_unknown_error_details', false)){
+        if ($this->config->get('lighty.exceptions.expose_unknown_error_details', false)) {
             return true;
         }
         /** @var array<int, class-string> $allowed */

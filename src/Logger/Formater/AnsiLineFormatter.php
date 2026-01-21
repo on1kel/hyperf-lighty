@@ -8,15 +8,14 @@ use Monolog\LogRecord;
 final class AnsiLineFormatter extends LineFormatter
 {
     private const RESET = "\033[0m";
-
     private const COLORS = [
-        'DEBUG'     => "\033[37m", // gray
-        'INFO'      => "\033[32m", // green
-        'NOTICE'    => "\033[36m", // cyan
-        'WARNING'   => "\033[33m", // yellow
-        'ERROR'     => "\033[31m", // red
-        'CRITICAL'  => "\033[31m",
-        'ALERT'     => "\033[31m",
+        'DEBUG' => "\033[37m", // gray
+        'INFO' => "\033[32m", // green
+        'NOTICE' => "\033[36m", // cyan
+        'WARNING' => "\033[33m", // yellow
+        'ERROR' => "\033[31m", // red
+        'CRITICAL' => "\033[31m",
+        'ALERT' => "\033[31m",
         'EMERGENCY' => "\033[31m",
     ];
 
