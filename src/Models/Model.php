@@ -4,6 +4,18 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Models;
 
+use Hyperf\Database\Model\Events\Created;
+use Hyperf\Database\Model\Events\Creating;
+use Hyperf\Database\Model\Events\Deleted;
+use Hyperf\Database\Model\Events\Deleting;
+use Hyperf\Database\Model\Events\ForceDeleted;
+use Hyperf\Database\Model\Events\ForceDeleting;
+use Hyperf\Database\Model\Events\Restored;
+use Hyperf\Database\Model\Events\Restoring;
+use Hyperf\Database\Model\Events\Saved;
+use Hyperf\Database\Model\Events\Saving;
+use Hyperf\Database\Model\Events\Updated;
+use Hyperf\Database\Model\Events\Updating;
 use Hyperf\DbConnection\Model\Model as ModelBase;
 
 use function Hyperf\Support\class_basename;
@@ -16,13 +28,25 @@ use Spatie\DataTransferObject\Exceptions\UnknownProperties;
 
 /**
  * Базовая абстракция модели (HyPerf).
+ *
+ * @method void created(Created $event)
+ * @method void updating(Updating $event)
+ * @method void updated(Updated $event)
+ * @method void saving(Saving $event)
+ * @method void saved(Saved $event)
+ * @method void restoring(Restoring $event)
+ * @method void restored(Restored $event)
+ * @method void deleting(Deleting $event)
+ * @method void deleted(Deleted $event)
+ * @method void forceDeleting(ForceDeleting $event)
+ * @method void forceDeleted(ForceDeleted $event)
  */
 abstract class Model extends ModelBase
 {
     /**
      * Автогенерация UUID для моделей, реализующих UuidableContract.
      */
-    public function creating(): void
+    public function creating(Creating $event): void
     {
         if ($this instanceof UuidableContract && ! $this->getKey()) {
             $key = $this->getKeyName();
