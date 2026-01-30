@@ -189,8 +189,8 @@ final class ModelGenerator extends BaseGenerator
 
             return false;
         }
-        $model_lower = strtolower($model);
-        $path = $dir . '/' . $model_lower . '.php';
+        $model_snake = $this->toSnakeCase($model);
+        $path = $dir . '/' . $model_snake . '.php';
 
         if (file_exists($path)) {
             // не перезаписываем существующий конфиг
@@ -232,7 +232,7 @@ final class ModelGenerator extends BaseGenerator
         $base = (\defined('BASE_PATH') ? BASE_PATH : getcwd());
         $path = $base . '/config/autoload/model_events.php';
 
-        $key = strtolower($key);
+        $key = $this->toSnakeCase($key);
 
         if (! file_exists($path)) {
             $this->output->comment('Файл model_events.php не найден — выполняется публикация...');
@@ -274,7 +274,7 @@ final class ModelGenerator extends BaseGenerator
 
         $pattern = '/([\'"]map[\'"]\s*=>\s*\[\s*)(\n)?(\s*)(.*?)(\s*\],)/s';
         if (preg_match($pattern, $code, $m, PREG_OFFSET_CAPTURE)) {
-            $insert = "\n            \\{$fqcn}::class => '{$key}',";
+            $insert = PHP_EOL . "            \\{$fqcn}::class => '{$key}'," . PHP_EOL . "        ";
             $new = substr($code, 0, $m[1][1] + strlen($m[1][0])) . $insert . substr($code, $m[1][1] + strlen($m[1][0]));
             $ok = @file_put_contents($path, $new, LOCK_EX);
 
@@ -297,5 +297,16 @@ final class ModelGenerator extends BaseGenerator
     private function stubPath(string $file): string
     {
         return __DIR__ . DIRECTORY_SEPARATOR . 'Stubs' . DIRECTORY_SEPARATOR . $file;
+    }
+
+    /**
+     * Преобразует CamelCase в snake_case.
+     * Company -> company
+     * ShosSection -> shos_section
+     * ShoppingCartCatalogItem -> shopping_cart_catalog_item
+     */
+    private function toSnakeCase(string $input): string
+    {
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $input));
     }
 }
