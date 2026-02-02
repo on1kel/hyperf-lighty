@@ -4,8 +4,9 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option;
 
-use Khazhinov\PhpSupport\DTO\Custer\EnumCaster;
+use Khazhinov\PhpSupport\DTO\Custer\DataTransferObjectCaster;
 use Khazhinov\PhpSupport\DTO\DataTransferObject;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Order\IndexActionRequestPayloadOrderDTO;
 use Spatie\DataTransferObject\Attributes\CastWith;
 
 class IndexActionOptionsOrders extends DataTransferObject
@@ -16,23 +17,8 @@ class IndexActionOptionsOrders extends DataTransferObject
     public bool $enable = true;
 
     /**
-     * @var array<string>
+     * @var IndexActionRequestPayloadOrderDTO|null
      */
-    public array $default_orders = ['-id'];
-
-    /**
-     * Флаг для включения логики контроля положения полей со значением null
-     *
-     * @var bool
-     */
-    public bool $null_control = false;
-
-    /**
-     * Положение полей со значением null
-     * По умолчанию - вверху
-     *
-     * @var IndexActionOptionsOrdersNullPositionEnum
-     */
-    #[CastWith(EnumCaster::class, enumType: IndexActionOptionsOrdersNullPositionEnum::class)]
-    public IndexActionOptionsOrdersNullPositionEnum $null_position = IndexActionOptionsOrdersNullPositionEnum::First;
+    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionRequestPayloadOrderDTO::class)]
+    public ?IndexActionRequestPayloadOrderDTO $default_order = null;
 }

@@ -15,16 +15,34 @@ use Spatie\DataTransferObject\Attributes\CastWith;
 class IndexActionOptionsDTO extends BaseCRUDOptionDTO
 {
     /**
-     * @var IndexActionOptionsFilters
+     * @var IndexActionRequestActionConfigurationSelect
      */
-    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionOptionsFilters::class)]
-    public IndexActionOptionsFilters $filters;
+    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionRequestActionConfigurationSelect::class)]
+    public IndexActionRequestActionConfigurationSelect $select;
+
+    /**
+     * @var IndexActionOptionsWhere
+     */
+    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionOptionsWhere::class)]
+    public IndexActionOptionsWhere $where;
 
     /**
      * @var IndexActionOptionsOrders
      */
     #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionOptionsOrders::class)]
     public IndexActionOptionsOrders $orders;
+
+    /**
+     * @var IndexActionRequestActionConfigurationJoin
+     */
+    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionRequestActionConfigurationJoin::class)]
+    public IndexActionRequestActionConfigurationJoin $join;
+
+    /**
+     * @var IndexActionRequestActionConfigurationGroupBy
+     */
+    #[CastWith(DataTransferObjectCaster::class, dto_class: IndexActionRequestActionConfigurationGroupBy::class)]
+    public IndexActionRequestActionConfigurationGroupBy $group_by;
 
     /**
      * @var IndexActionOptionsPagination

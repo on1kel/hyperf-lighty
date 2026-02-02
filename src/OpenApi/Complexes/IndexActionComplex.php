@@ -9,7 +9,7 @@ use On1kel\HyperfFlyDocs\Generator\DTO\ComplexResultDTO;
 use On1kel\HyperfFlyDocs\Generator\Registry\ComponentsRegistry;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option\IndexActionOptionsExportExportTypeEnum;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option\IndexActionOptionsReturnTypeEnum;
-use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\IndexActionRequestPayloadFilterOperatorEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Where\IndexActionRequestPayloadWhereOperatorEnum;
 use On1kel\HyperfLighty\OpenApi\Complexes\IndexAction\IndexActionArgumentsDTO;
 use On1kel\HyperfLighty\OpenApi\Complexes\Reflector\ModelReflector;
 use On1kel\HyperfLighty\OpenApi\Complexes\Responses\ErrorResponse;
@@ -79,7 +79,7 @@ final class IndexActionComplex implements ComplexFactoryInterface
 
         // 4. RequestBody (фильтры, with, export)
         $requestBody = null;
-        if ($args->options->filters->enable) {
+        if ($args->options->where->enable) {
             $requestBody = $this->buildFiltersRequestBody($args);
         }
         // 5. Ответы
@@ -112,7 +112,7 @@ final class IndexActionComplex implements ComplexFactoryInterface
     private function buildFiltersRequestBody(IndexActionArgumentsDTO $args): RequestBody
     {
         // Перечисления
-        $operatorEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadFilterOperatorEnum::cases());
+        $operatorEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadWhereOperatorEnum::cases());
         $returnTypeEnum = array_map(static fn ($c) => $c->value, IndexActionOptionsReturnTypeEnum::cases());
         $exportTypeEnum = array_map(static fn ($c) => $c->value, IndexActionOptionsExportExportTypeEnum::cases());
 
