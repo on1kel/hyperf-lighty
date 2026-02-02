@@ -4,21 +4,51 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload;
 
+use function count;
+
 use Khazhinov\PhpSupport\DTO\DataTransferObject;
 use Khazhinov\PhpSupport\DTO\Validation\ArrayOfScalar;
 use Khazhinov\PhpSupport\DTO\Validation\NumberBetween;
 use Khazhinov\PhpSupport\Enums\ScalarTypeEnum;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option\IndexActionOptionsReturnTypeEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Join\IndexActionRequestPayloadJoinDTO;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Order\IndexActionRequestPayloadOrderDTO;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Select\IndexActionRequestColumnDTO;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Where\IndexActionRequestPayloadWhereDTO;
 use Spatie\DataTransferObject\Attributes\CastWith;
 use Spatie\DataTransferObject\Casters\ArrayCaster;
 
 class IndexActionRequestPayloadDTO extends DataTransferObject
 {
     /**
-     * @var IndexActionRequestPayloadFilterDTO[]
+     * @var IndexActionRequestColumnDTO[]
      */
-    #[CastWith(ArrayCaster::class, itemType: IndexActionRequestPayloadFilterDTO::class)]
-    public array $filter = [];
+    #[CastWith(ArrayCaster::class, itemType: IndexActionRequestColumnDTO::class)]
+    public array $select = [];
+
+    /**
+     * @var IndexActionRequestPayloadWhereDTO[]
+     */
+    #[CastWith(ArrayCaster::class, itemType: IndexActionRequestPayloadWhereDTO::class)]
+    public array $where = [];
+
+    /**
+     * @var IndexActionRequestPayloadJoinDTO[]
+     */
+    #[CastWith(ArrayCaster::class, itemType: IndexActionRequestPayloadJoinDTO::class)]
+    public array $join = [];
+
+    /**
+     * @var IndexActionRequestPayloadOrderDTO[]
+     */
+    #[CastWith(ArrayCaster::class, itemType: IndexActionRequestPayloadOrderDTO::class)]
+    public array $order = [];
+
+    /**
+     * @var array<string>
+     */
+    #[ArrayOfScalar(ScalarTypeEnum::String, true)]
+    public array $group_by = [];
 
     /**
      * @var int
@@ -29,10 +59,9 @@ class IndexActionRequestPayloadDTO extends DataTransferObject
     public int $limit = 10;
 
     /**
-     * @var array<string>|null
+     * @var bool
      */
-    #[ArrayOfScalar(ScalarTypeEnum::String, true)]
-    public array|null $order = null;
+    public bool $paginate = true;
 
     /**
      * @var array<string, mixed>|null
@@ -45,6 +74,42 @@ class IndexActionRequestPayloadDTO extends DataTransferObject
      * @var IndexActionRequestPayloadExportDTO
      */
     public IndexActionRequestPayloadExportDTO $export;
+
+    /**
+     * Проверка, является ли запрос аналитическим (с агрегациями или GROUP BY)
+     *
+     * @return bool
+     */
+    public function isAnalyticalQuery(): bool
+    {
+        return $this->hasAggregations() || $this->hasGroupBy();
+    }
+
+    /**
+     * Проверка наличия агрегаций в SELECT
+     *
+     * @return bool
+     */
+    public function hasAggregations(): bool
+    {
+        foreach ($this->select as $column) {
+            if ($column->aggregation !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Проверка наличия GROUP BY
+     *
+     * @return bool
+     */
+    public function hasGroupBy(): bool
+    {
+        return count($this->group_by) > 0;
+    }
 
     /**
      * @return array<string, string>

@@ -8,7 +8,7 @@ use Khazhinov\PhpSupport\DTO\DataTransferObject;
 use Khazhinov\PhpSupport\DTO\Validation\ArrayOfScalar;
 use Khazhinov\PhpSupport\Enums\ScalarTypeEnum;
 
-class IndexActionOptionsFilters extends DataTransferObject
+class IndexActionOptionsWhere extends DataTransferObject
 {
     /**
      * @var bool
