@@ -70,38 +70,9 @@ final class IndexActionComplex implements ComplexFactoryInterface
                 ->schema(Schema::integer()->default(1));
         }
 
-        if ($args->options->orders->enable) {
-            $directionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderDirectionEnum::cases());
-            $nullPositionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderNullPositionEnum::cases());
-
-            $orderItem = Schema::object()
-                ->properties(
-                    Schema::string('column')
-                        ->description('Столбец для сортировки (формат: column или table.column)')
-                        ->default('id'),
-                    Schema::string('direction')
-                        ->description('Направление сортировки')
-                        ->enum($directionEnum)
-                        ->default('asc'),
-                    Schema::string('null_position')
-                        ->description('Позиция NULL значений')
-                        ->enum($nullPositionEnum)
-                        ->default('first'),
-                );
-
-            $parameters[] = Parameter::query('order[]')
-                ->required(false)
-                ->description('Массив сортировок')
-                ->schema(
-                    Schema::create()
-                        ->type('array')
-                        ->items($orderItem)
-                );
-        }
-
-        // 4. RequestBody (select, where, join, group_by, with, export)
+        // 4. RequestBody (select, where, join, order, group_by, with, export)
         $requestBody = null;
-        if ($args->options->where->enable || $args->options->select->enable || $args->options->join->enable || $args->options->group_by->enable) {
+        if ($args->options->where->enable || $args->options->select->enable || $args->options->join->enable || $args->options->group_by->enable || $args->options->orders->enable) {
             $requestBody = $this->buildRequestBody($args);
         }
         // 5. Ответы
@@ -140,6 +111,8 @@ final class IndexActionComplex implements ComplexFactoryInterface
         $exportTypeEnum = array_map(static fn ($c) => $c->value, IndexActionOptionsExportExportTypeEnum::cases());
         $aggregationsEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadAggregationsEnum::cases());
         $joinTypeEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadJoinTypeEnum::cases());
+        $directionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderDirectionEnum::cases());
+        $nullPositionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderNullPositionEnum::cases());
 
         // Поля модели
         $columns = $this->model_reflector->getCollectionColumns($args->model_class, $args->collection_resource);
@@ -299,6 +272,28 @@ final class IndexActionComplex implements ComplexFactoryInterface
                                 'right' => 'related_table.main_id',
                             ],
                         ],
+                    ]),
+                Schema::array('order')
+                    ->description('Массив сортировок')
+                    ->items(
+                        Schema::object()
+                            ->properties(
+                                Schema::string('column')
+                                    ->description('Столбец для сортировки (формат: column или table.column)')
+                                    ->default('id'),
+                                Schema::string('direction')
+                                    ->description('Направление сортировки')
+                                    ->enum($directionEnum)
+                                    ->default('asc'),
+                                Schema::string('null_position')
+                                    ->description('Позиция NULL значений')
+                                    ->enum($nullPositionEnum)
+                                    ->default('first'),
+                            )
+                    )
+                    ->example([
+                        ['column' => 'id', 'direction' => 'desc'],
+                        ['column' => 'created_at', 'direction' => 'asc', 'null_position' => 'last'],
                     ]),
                 Schema::array('group_by')
                     ->description('Массив колонок для GROUP BY')
