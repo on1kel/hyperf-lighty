@@ -191,19 +191,6 @@ final class IndexActionComplex implements ComplexFactoryInterface
                     ->default('and'),
             );
 
-        // join[].on - ON условие для JOIN
-        $joinOnItem = Schema::object()
-            ->properties(
-                Schema::string('left')
-                    ->description('Левая колонка (формат: table.column)'),
-                Schema::string('operator')
-                    ->description('Оператор сравнения')
-                    ->enum($operatorEnum)
-                    ->default('='),
-                Schema::string('right')
-                    ->description('Правая колонка (формат: table.column)'),
-            );
-
         // join[] item - JOIN
         $joinItem = Schema::object()
             ->properties(
@@ -213,8 +200,18 @@ final class IndexActionComplex implements ComplexFactoryInterface
                     ->default('left'),
                 Schema::string('table')
                     ->description('Имя таблицы для присоединения'),
-                $joinOnItem->name('on')
-                    ->description('Условие ON для JOIN'),
+                Schema::object('on')
+                    ->description('Условие ON для JOIN')
+                    ->properties(
+                        Schema::string('left')
+                            ->description('Левая колонка (формат: table.column)'),
+                        Schema::string('operator')
+                            ->description('Оператор сравнения')
+                            ->enum($operatorEnum)
+                            ->default('='),
+                        Schema::string('right')
+                            ->description('Правая колонка (формат: table.column)'),
+                    ),
                 Schema::array('where')
                     ->description('Дополнительные WHERE условия для JOIN')
                     ->items($whereItem),
