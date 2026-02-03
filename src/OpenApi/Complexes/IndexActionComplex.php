@@ -9,7 +9,12 @@ use On1kel\HyperfFlyDocs\Generator\DTO\ComplexResultDTO;
 use On1kel\HyperfFlyDocs\Generator\Registry\ComponentsRegistry;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option\IndexActionOptionsExportExportTypeEnum;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Option\IndexActionOptionsReturnTypeEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Join\IndexActionRequestPayloadJoinTypeEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Order\IndexActionRequestPayloadOrderDirectionEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Order\IndexActionRequestPayloadOrderNullPositionEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Select\IndexActionRequestPayloadAggregationsEnum;
 use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Where\IndexActionRequestPayloadWhereOperatorEnum;
+use On1kel\HyperfLighty\Http\Controllers\Api\CRUD\DTO\IndexAction\Payload\Where\IndexActionRequestPayloadWhereValueTypeEnum;
 use On1kel\HyperfLighty\OpenApi\Complexes\IndexAction\IndexActionArgumentsDTO;
 use On1kel\HyperfLighty\OpenApi\Complexes\Reflector\ModelReflector;
 use On1kel\HyperfLighty\OpenApi\Complexes\Responses\ErrorResponse;
@@ -66,21 +71,38 @@ final class IndexActionComplex implements ComplexFactoryInterface
         }
 
         if ($args->options->orders->enable) {
+            $directionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderDirectionEnum::cases());
+            $nullPositionEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadOrderNullPositionEnum::cases());
+
+            $orderItem = Schema::object()
+                ->properties(
+                    Schema::string('column')
+                        ->description('Столбец для сортировки (формат: column или table.column)')
+                        ->default('id'),
+                    Schema::string('direction')
+                        ->description('Направление сортировки')
+                        ->enum($directionEnum)
+                        ->default('asc'),
+                    Schema::string('null_position')
+                        ->description('Позиция NULL значений')
+                        ->enum($nullPositionEnum)
+                        ->default('first'),
+                );
+
             $parameters[] = Parameter::query('order[]')
                 ->required(false)
                 ->description('Массив сортировок')
                 ->schema(
                     Schema::create()
                         ->type('array')
-                        ->items(Schema::string())
-                        ->default(['-id'])
+                        ->items($orderItem)
                 );
         }
 
-        // 4. RequestBody (фильтры, with, export)
+        // 4. RequestBody (select, where, join, group_by, with, export)
         $requestBody = null;
-        if ($args->options->where->enable) {
-            $requestBody = $this->buildFiltersRequestBody($args);
+        if ($args->options->where->enable || $args->options->select->enable || $args->options->join->enable || $args->options->group_by->enable) {
+            $requestBody = $this->buildRequestBody($args);
         }
         // 5. Ответы
         $okResponse = SuccessCollectionResourceResponse::build(
@@ -109,42 +131,93 @@ final class IndexActionComplex implements ComplexFactoryInterface
     /**
      * Построить RequestBody со схемой фильтрации
      */
-    private function buildFiltersRequestBody(IndexActionArgumentsDTO $args): RequestBody
+    private function buildRequestBody(IndexActionArgumentsDTO $args): RequestBody
     {
         // Перечисления
         $operatorEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadWhereOperatorEnum::cases());
+        $valueTypeEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadWhereValueTypeEnum::cases());
         $returnTypeEnum = array_map(static fn ($c) => $c->value, IndexActionOptionsReturnTypeEnum::cases());
         $exportTypeEnum = array_map(static fn ($c) => $c->value, IndexActionOptionsExportExportTypeEnum::cases());
+        $aggregationsEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadAggregationsEnum::cases());
+        $joinTypeEnum = array_map(static fn ($c) => $c->value, IndexActionRequestPayloadJoinTypeEnum::cases());
 
         // Поля модели
         $columns = $this->model_reflector->getCollectionColumns($args->model_class, $args->collection_resource);
         $firstColumn = $columns[0] ?? 'id';
         $additions = $this->model_reflector->getCollectionAdditions($args->model_class, $args->collection_resource);
 
-        // filter[] item
-        $filterItem = Schema::object()
+        // select[] item - SELECT с агрегациями
+        $selectItem = Schema::object()
+            ->properties(
+                Schema::string('column')
+                    ->description('Столбец для выборки (формат: column или table.column, * для всех)')
+                    ->default('*'),
+                Schema::string('aggregation')
+                    ->description('Функция агрегации')
+                    ->enum($aggregationsEnum)
+                    ->nullable(true),
+                Schema::string('alias')
+                    ->description('Алиас для колонки в результате')
+                    ->nullable(true),
+            );
+
+        // where[] item - WHERE условия (бывший filter)
+        $whereItem = Schema::object()
             ->properties(
                 Schema::string('type')
-                    ->description('Тип объекта фильтра')
+                    ->description('Тип объекта условия')
                     ->enum(['single', 'group'])
                     ->default('single'),
                 Schema::array('group')
-                    ->description('Массив фильтров в группе')
+                    ->description('Массив условий в группе')
                     ->items(Schema::object()->properties()),
                 Schema::string('column')
-                    ->description('Столбец сущности, по которому осуществляется поиск')
+                    ->description('Столбец сущности (формат: column или table.column)')
                     ->enum($columns)
                     ->default($firstColumn),
                 Schema::string('operator')
                     ->description('Оператор сравнения')
                     ->enum($operatorEnum)
                     ->default('='),
+                Schema::string('value_type')
+                    ->description('Тип значения: scalar - скалярное значение, pointer - ссылка на другую колонку')
+                    ->enum($valueTypeEnum)
+                    ->default('scalar'),
+                Schema::string('value')
+                    ->description('Значение поля. Может быть массивом значений или указателем на колонку.'),
                 Schema::string('boolean')
                     ->description('Логическая операция склеивания')
                     ->enum(['and', 'or'])
                     ->default('and'),
-                Schema::string('value')
-                    ->description('Значение поля. Может быть массивом значений.'),
+            );
+
+        // join[].on - ON условие для JOIN
+        $joinOnItem = Schema::object()
+            ->properties(
+                Schema::string('left')
+                    ->description('Левая колонка (формат: table.column)'),
+                Schema::string('operator')
+                    ->description('Оператор сравнения')
+                    ->enum($operatorEnum)
+                    ->default('='),
+                Schema::string('right')
+                    ->description('Правая колонка (формат: table.column)'),
+            );
+
+        // join[] item - JOIN
+        $joinItem = Schema::object()
+            ->properties(
+                Schema::string('type')
+                    ->description('Тип JOIN')
+                    ->enum($joinTypeEnum)
+                    ->default('left'),
+                Schema::string('table')
+                    ->description('Имя таблицы для присоединения'),
+                $joinOnItem->name('on')
+                    ->description('Условие ON для JOIN'),
+                Schema::array('where')
+                    ->description('Дополнительные WHERE условия для JOIN')
+                    ->items($whereItem),
             );
 
         // with{}
@@ -186,9 +259,16 @@ final class IndexActionComplex implements ComplexFactoryInterface
         // Корневая схема
         $rootSchema = Schema::object()
             ->properties(
-                Schema::array('filter')
-                    ->description('Массив фильтров')
-                    ->items($filterItem)
+                Schema::array('select')
+                    ->description('Массив колонок для SELECT с возможностью агрегаций')
+                    ->items($selectItem)
+                    ->example([
+                        ['column' => '*'],
+                        ['column' => 'id', 'aggregation' => 'count', 'alias' => 'total'],
+                    ]),
+                Schema::array('where')
+                    ->description('Массив WHERE условий')
+                    ->items($whereItem)
                     ->example([
                         [
                             'column' => $this->model_reflector->getScalarFieldNames($args->model_class)[0] ?? $firstColumn,
@@ -209,6 +289,27 @@ final class IndexActionComplex implements ComplexFactoryInterface
                             ],
                         ],
                     ]),
+                Schema::array('join')
+                    ->description('Массив JOIN операций')
+                    ->items($joinItem)
+                    ->example([
+                        [
+                            'type' => 'left',
+                            'table' => 'related_table',
+                            'on' => [
+                                'left' => 'main_table.id',
+                                'operator' => '=',
+                                'right' => 'related_table.main_id',
+                            ],
+                        ],
+                    ]),
+                Schema::array('group_by')
+                    ->description('Массив колонок для GROUP BY')
+                    ->items(Schema::string())
+                    ->example(['status', 'category_id']),
+                Schema::boolean('paginate')
+                    ->description('Включить пагинацию')
+                    ->default(true),
                 $withObject,
                 Schema::string('return_type')
                     ->enum($returnTypeEnum)
