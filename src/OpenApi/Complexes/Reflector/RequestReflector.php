@@ -8,7 +8,9 @@ use Hyperf\Context\ApplicationContext;
 use Hyperf\Contract\ContainerInterface;
 use Hyperf\HttpMessage\Server\Request as HyperfServerRequest;
 use Hyperf\HttpServer\Contract\RequestInterface;
+use Hyperf\Validation\Contract\Rule;
 use Hyperf\Validation\Request\FormRequest;
+use On1kel\HyperfLighty\Http\Requests\Enum;
 use On1kel\OAS\Builder\Bodies\RequestBody;
 use On1kel\OAS\Builder\Media\MediaType;
 use On1kel\OAS\Builder\Schema\Schema;
@@ -16,6 +18,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use ReflectionClass;
 use ReflectionException;
 use Throwable;
+use UnitEnum;
 
 /**
  * RequestReflector
@@ -281,7 +284,7 @@ final class RequestReflector
         $root = $this->makeEmptyNode();
 
         foreach ($rules as $name => $rule) {
-            $ruleString = is_array($rule) ? implode('|', $rule) : (string)$rule;
+            $ruleString = $this->normalizeRuleToString($rule);
             $type = $this->inferTypeFromRule($ruleString);
 
             $segments = explode('.', (string)$name);
@@ -407,5 +410,96 @@ final class RequestReflector
             'file' => Schema::string($fieldName)->format('binary'),
             default => Schema::string($fieldName),
         };
+    }
+
+    /**
+     * Нормализует правило валидации в строку.
+     * Обрабатывает массивы, объекты Enum и другие Rule-объекты.
+     *
+     * @param mixed $rule
+     * @return string
+     */
+    private function normalizeRuleToString(mixed $rule): string
+    {
+        // Если уже строка — возвращаем как есть
+        if (is_string($rule)) {
+            return $rule;
+        }
+
+        // Если массив — обрабатываем каждый элемент
+        if (is_array($rule)) {
+            $normalized = [];
+            foreach ($rule as $item) {
+                if ($item instanceof Enum) {
+                    // Преобразуем Enum в in:value1,value2,...
+                    $normalized[] = $this->enumToInRule($item);
+                } elseif ($item instanceof Rule) {
+                    // Другие Rule-объекты — просто пропускаем или используем fallback
+                    $normalized[] = 'custom_rule';
+                } elseif (is_object($item)) {
+                    // Любой другой объект — пытаемся привести к строке
+                    $normalized[] = method_exists($item, '__toString') ? (string)$item : 'object';
+                } else {
+                    $normalized[] = (string)$item;
+                }
+            }
+            return implode('|', $normalized);
+        }
+
+        // Если это Enum объект
+        if ($rule instanceof Enum) {
+            return $this->enumToInRule($rule);
+        }
+
+        // Если это другой Rule объект
+        if ($rule instanceof Rule) {
+            return 'custom_rule';
+        }
+
+        // Любой другой объект
+        if (is_object($rule)) {
+            return method_exists($rule, '__toString') ? (string)$rule : 'object';
+        }
+
+        // Fallback для всего остального
+        return (string)$rule;
+    }
+
+    /**
+     * Преобразует Enum rule в строку формата "in:value1,value2,..."
+     *
+     * @param Enum $enum
+     * @return string
+     */
+    private function enumToInRule(Enum $enum): string
+    {
+        $enumClass = $enum->type;
+
+        // Проверяем, что это backed enum с методом cases()
+        if (!enum_exists($enumClass) || !method_exists($enumClass, 'cases')) {
+            return 'string';
+        }
+
+        try {
+            $cases = $enumClass::cases();
+            $values = [];
+
+            foreach ($cases as $case) {
+                // Для backed enum берём value, для unit enum — name
+                if ($case instanceof \BackedEnum) {
+                    $values[] = $case->value;
+                } elseif ($case instanceof UnitEnum) {
+                    $values[] = $case->name;
+                }
+            }
+
+            if (empty($values)) {
+                return 'string';
+            }
+
+            return 'in:' . implode(',', $values);
+        } catch (Throwable) {
+            return 'string';
+        }
     }
 }

@@ -177,6 +177,21 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
         if ($this->config->get('lighty.exceptions.expose_unknown_error_details', false)) {
             return true;
         }
+
+        $class = $e::class;
+
+        /** @var array<int, string> $allowedNamespaces */
+        $allowedNamespaces = (array) $this->config->get('lighty.exceptions.allowed_namespaces', []);
+
+        foreach ($allowedNamespaces as $prefix) {
+            if (! is_string($prefix) || $prefix === '') {
+                continue;
+            }
+            if (str_starts_with($class, $prefix)) {
+                return true;
+            }
+        }
+
         /** @var array<int, class-string> $allowed */
         $allowed = (array) $this->config->get('lighty.exceptions.allowed', []);
 

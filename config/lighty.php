@@ -53,6 +53,12 @@ return [
             // \Hyperf\Validation\ValidationException::class,
         ],
 
+        // Namespaces, exceptions from which will not be masked by the JSON exception handler.
+        // Useful for tooling endpoints like fly-docs/openapi.
+        'allowed_namespaces' => [
+            'On1kel\\HyperfFlyDocs\\',
+        ],
+
         // Сообщение по умолчанию (ключ перевода или текст).
         'fallback_message_key' => 'errors.something_went_wrong',
         'fallback_message_text' => 'Something went wrong.',
