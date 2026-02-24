@@ -261,7 +261,7 @@ abstract class CollectionResource extends JsonResource implements Countable, Ite
                 static function ($item) {
                     if ($item instanceof BaseJsonResource) {
                         /** @var array<string,mixed>|scalar|null $arr */
-                        $arr = $item->toArray(); // ← без $request
+                        $arr = $item->resolve();
 
                         return $arr;
                     }

@@ -196,10 +196,12 @@ final class IndexActionComplex implements ComplexFactoryInterface
             ->properties(
                 Schema::array('relationships')
                     ->description('Список отношений для выгрузки')
-                    ->items(Schema::string()->enum($additions->relationships)),
+                    ->items(Schema::string()->enum($additions->relationships))
+                    ->example(array_slice($additions->relationships, 0, 3)),
                 Schema::array('properties')
                     ->description('Список свойств для выгрузки')
-                    ->items(Schema::string()->enum($additions->properties)),
+                    ->items(Schema::string()->enum($additions->properties))
+                    ->example(array_slice($additions->properties, 0, 3)),
             );
 
         // export{}
