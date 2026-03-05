@@ -98,7 +98,7 @@ final class ModelReflector
 
         // Гоним через SingleResource
         /** @var SingleResource $single */
-        $single = new $singleClass($vm, true, true);
+        $single = new $singleClass($vm, true, false);
         $payload = $this->resolveResourceToArray($single);
 
         // Если resource вернул { data: { ... } }, разворачиваем data
@@ -137,7 +137,7 @@ final class ModelReflector
         $vm = $this->buildVirtualModelFor($modelClass, $props);
 
         /** @var SingleResource $single */
-        $single = new $singleResource($vm, true, true);
+        $single = new $singleResource($vm, true, false);
         $payload = $this->resolveResourceToArray($single);
 
         if (isset($payload['data']) && is_array($payload['data'])) {
@@ -196,7 +196,7 @@ final class ModelReflector
         $vm = $this->buildVirtualModelFor($modelClass);
 
         /** @var SingleResource $single */
-        $single = new $singleClass($vm, true, true);
+        $single = new $singleClass($vm, true, false);
         $single->toArray(); // побочный эффект: ресурс может заполнить $additions
 
         $rels = $single->additions['relationships'] ?? [];
@@ -407,7 +407,7 @@ final class ModelReflector
         $vm = $this->buildVirtualModelFor($modelClass, $props);
 
         /** @var SingleResource $single */
-        $single = new $singleClass($vm, true, true);
+        $single = new $singleClass($vm, true, false);
         $payload = $this->resolveResourceToArray($single);
         if (isset($payload['data']) && is_array($payload['data'])) {
             $payload = $payload['data'];
