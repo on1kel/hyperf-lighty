@@ -55,7 +55,7 @@ final class ShowActionComplex implements ComplexFactoryInterface
          * Имя компонента берём из имени класса модели,
          * например App\Models\Post -> "Post".
          */
-        $modelRef = $this->components->getOrRegisterSchema(
+        $this->components->getOrRegisterSchema(
             $args->model_class,
             fn () => $singleSchema,
         );
@@ -71,12 +71,12 @@ final class ShowActionComplex implements ComplexFactoryInterface
          *     data: { ...resource... }
          *   }
          *
-         *   Здесь в data пойдёт $modelRef (Schema::ref('#/components/schemas/<ModelName>'))
+         *   Здесь в data пойдёт inline-схема ресурса ($singleSchema)
          *
          * - 400: badRequest() из ErrorResponse
          */
         $okResponse = SuccessSingleResourceResponse::build(
-            data: $modelRef,
+            data: $singleSchema,
         );
 
         $badRequest = ErrorResponse::badRequest();

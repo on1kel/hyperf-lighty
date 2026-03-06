@@ -49,7 +49,7 @@ final class IndexActionComplex implements ComplexFactoryInterface
 
         $modelName = basename(str_replace('\\', '/', ltrim($args->model_class, '\\')));
 
-        $modelRef = $this->components->getOrRegisterSchema(
+        $this->components->getOrRegisterSchema(
             $modelName,
             fn () => $singleSchema
         );
@@ -77,7 +77,7 @@ final class IndexActionComplex implements ComplexFactoryInterface
         }
         // 5. Ответы
         $okResponse = SuccessCollectionResourceResponse::build(
-            itemSchema: $modelRef,
+            itemSchema: $singleSchema,
             response_description: 'OK',
             is_pagination_enable: $args->options->pagination->enable,
             code: 200,

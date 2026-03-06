@@ -40,16 +40,18 @@ final class StoreActionComplex implements ComplexFactoryInterface
             $requestBody = $this->request_reflector->reflect($args->validation_request);
         }
 
-        $modelRef = $this->components->getOrRegisterSchema(
+        $singleSchema = $this->model_reflector->getSchemaForSingle(
             $args->model_class,
-            fn () => $this->model_reflector->getSchemaForSingle(
-                $args->model_class,
-                $args->single_resource
-            )
+            $args->single_resource
+        );
+
+        $this->components->getOrRegisterSchema(
+            $args->model_class,
+            fn () => $singleSchema
         );
 
         $okResponse = SuccessSingleResourceResponse::build(
-            data: $modelRef,
+            data: $singleSchema,
         );
 
         $badRequest = ErrorResponse::badRequest();
