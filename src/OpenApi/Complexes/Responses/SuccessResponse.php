@@ -113,7 +113,7 @@ final class SuccessResponse
      *
      * Возвращаем: Schema, которую можно положить в propertiesNamed(['data' => <...>]).
      */
-    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema|string
+    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema
     {
         // 1. Если массив схем (ассоциативная карта полей объекта)
         //    Собираем Schema::object()->propertiesNamed([...])
@@ -139,11 +139,11 @@ final class SuccessResponse
             return $data;
         }
 
-        // 3. Если Reference — нужно вытащить $ref-путь, вернуть строку "#/components/schemas/Model"
+        // 3. Если Reference — вытаскиваем $ref-путь и оборачиваем в Schema::ref()
         if ($data instanceof Reference) {
             $refPath = self::extractRefPath($data);
 
-            return $refPath;
+            return Schema::ref($refPath);
         }
 
         // 4. Если string — это либо "$ref", либо plain string.
@@ -155,7 +155,7 @@ final class SuccessResponse
                 );
             }
 
-            return $data; // "#/components/schemas/Model"
+            return Schema::ref($data);
         }
 
         throw new RuntimeException('buildDataAsObject: неподдерживаемый тип');
@@ -233,14 +233,14 @@ final class SuccessResponse
      * Нормализуем "одну сущность" (Schema|Reference|string) в то,
      * что можно передать в ->items() (Schema|string).
      */
-    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema|string
+    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema
     {
         if ($data instanceof Schema) {
             return $data;
         }
 
         if ($data instanceof Reference) {
-            return self::extractRefPath($data); // "#/components/schemas/Model"
+            return Schema::ref(self::extractRefPath($data));
         }
 
         if (is_string($data)) {
@@ -251,7 +251,7 @@ final class SuccessResponse
                 );
             }
 
-            return $data;
+            return Schema::ref($data);
         }
 
         throw new RuntimeException('normalizeToSchemaOrRefForItems: неподдерживаемый тип');
