@@ -113,7 +113,7 @@ final class SuccessResponse
      *
      * Возвращаем: Schema, которую можно положить в propertiesNamed(['data' => <...>]).
      */
-    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema
+    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema|Reference
     {
         // 1. Если массив схем (ассоциативная карта полей объекта)
         //    Собираем Schema::object()->propertiesNamed([...])
@@ -139,11 +139,9 @@ final class SuccessResponse
             return $data;
         }
 
-        // 3. Если Reference — вытаскиваем $ref-путь и оборачиваем в Schema::ref()
+        // 3. Если Reference — вернуть напрямую, propertiesNamed/OAS builder принимает Reference
         if ($data instanceof Reference) {
-            $refPath = self::extractRefPath($data);
-
-            return Schema::ref($refPath);
+            return $data;
         }
 
         // 4. Если string — это либо "$ref", либо plain string.
@@ -233,14 +231,15 @@ final class SuccessResponse
      * Нормализуем "одну сущность" (Schema|Reference|string) в то,
      * что можно передать в ->items() (Schema|string).
      */
-    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema
+    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema|Reference
     {
         if ($data instanceof Schema) {
             return $data;
         }
 
+        // Reference — вернуть напрямую, items() принимает Reference
         if ($data instanceof Reference) {
-            return Schema::ref(self::extractRefPath($data));
+            return $data;
         }
 
         if (is_string($data)) {
