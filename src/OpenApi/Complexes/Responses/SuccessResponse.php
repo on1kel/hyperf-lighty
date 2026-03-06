@@ -113,7 +113,7 @@ final class SuccessResponse
      *
      * Возвращаем: Schema, которую можно положить в propertiesNamed(['data' => <...>]).
      */
-    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema|Reference
+    private static function buildDataAsObject(Schema|Reference|string|array $data): Schema|string
     {
         // 1. Если массив схем (ассоциативная карта полей объекта)
         //    Собираем Schema::object()->propertiesNamed([...])
@@ -139,9 +139,9 @@ final class SuccessResponse
             return $data;
         }
 
-        // 3. Если Reference — вернуть напрямую, propertiesNamed/OAS builder принимает Reference
+        // 3. Если Reference — извлечь $ref-путь как строку (propertiesNamed принимает Schema|строку $ref)
         if ($data instanceof Reference) {
-            return $data;
+            return self::extractRefPath($data);
         }
 
         // 4. Если string — это либо "$ref", либо plain string.
@@ -153,7 +153,7 @@ final class SuccessResponse
                 );
             }
 
-            return Schema::ref($data);
+            return $data;
         }
 
         throw new RuntimeException('buildDataAsObject: неподдерживаемый тип');
@@ -231,15 +231,15 @@ final class SuccessResponse
      * Нормализуем "одну сущность" (Schema|Reference|string) в то,
      * что можно передать в ->items() (Schema|string).
      */
-    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema|Reference
+    private static function normalizeToSchemaOrRefForItems(Schema|Reference|string $data): Schema|string
     {
         if ($data instanceof Schema) {
             return $data;
         }
 
-        // Reference — вернуть напрямую, items() принимает Reference
+        // Reference — извлечь $ref-путь как строку (items() принимает Schema|строку $ref)
         if ($data instanceof Reference) {
-            return $data;
+            return self::extractRefPath($data);
         }
 
         if (is_string($data)) {
@@ -250,7 +250,7 @@ final class SuccessResponse
                 );
             }
 
-            return Schema::ref($data);
+            return $data;
         }
 
         throw new RuntimeException('normalizeToSchemaOrRefForItems: неподдерживаемый тип');
