@@ -43,6 +43,16 @@ use Spatie\DataTransferObject\Exceptions\UnknownProperties;
  */
 abstract class Model extends ModelBase
 {
+    public function __construct(array $attributes = [])
+    {
+        if ($this instanceof UuidableContract) {
+            $this->keyType = 'string';
+            $this->incrementing = false;
+        }
+
+        parent::__construct($attributes);
+    }
+
     /**
      * Автогенерация UUID для моделей, реализующих UuidableContract.
      */

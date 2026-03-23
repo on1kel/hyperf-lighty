@@ -100,23 +100,42 @@ final class RequestReflector
 
     private function inferTypeFromRule(string $rule): string
     {
-        $lower = strtolower($rule);
+        $ruleNames = $this->extractRuleNames($rule);
 
-        return match (true) {
-            str_contains($lower, 'int'),
-            str_contains($lower, 'integer') => 'integer',
-            str_contains($lower, 'numeric'),
-            str_contains($lower, 'decimal'),
-            str_contains($lower, 'float'),
-            str_contains($lower, 'double') => 'number',
-            str_contains($lower, 'bool') => 'boolean',
-            str_contains($lower, 'array') => 'array',
-            str_contains($lower, 'file'),
-            str_contains($lower, 'image'),
-            str_contains($lower, 'mimes'),
-            str_contains($lower, 'mimetypes') => 'file',
-            default => 'string',
-        };
+        foreach ($ruleNames as $name) {
+            if (in_array($name, ['int', 'integer'], true)) {
+                return 'integer';
+            }
+            if (in_array($name, ['numeric', 'decimal', 'float', 'double'], true)) {
+                return 'number';
+            }
+            if (in_array($name, ['bool', 'boolean'], true)) {
+                return 'boolean';
+            }
+            if ($name === 'array') {
+                return 'array';
+            }
+            if (in_array($name, ['file', 'mimes', 'mimetypes'], true)) {
+                return 'file';
+            }
+        }
+
+        return 'string';
+    }
+
+    private function extractRuleNames(string $rule): array
+    {
+        $rules = explode('|', $rule);
+        $names = [];
+
+        foreach ($rules as $r) {
+            $name = strtolower(explode(':', trim($r), 2)[0]);
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
     }
 
     /**
