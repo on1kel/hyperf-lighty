@@ -5,7 +5,9 @@ declare(strict_types = 1);
 namespace On1kel\HyperfLighty\Http\Resources;
 
 use Closure;
+use Hyperf\Context\ApplicationContext;
 use Hyperf\Context\Context;
+use Hyperf\HttpServer\Contract\RequestInterface;
 use Hyperf\Resource\Json\AnonymousResourceCollection;
 use Hyperf\Resource\Json\JsonResource as BaseJsonResource;
 use Hyperf\Resource\Value\MissingValue;
@@ -122,8 +124,8 @@ abstract class JsonResource extends BaseJsonResource
         }
 
         // request body: {"with": {"relationships": ["file"]}} (JSON формат)
-        $body = (array) ($serverRequest->getParsedBody() ?? []);
-        $bodyWith = (array) ($body['with'][$section] ?? []);
+        $request = ApplicationContext::getContainer()->get(RequestInterface::class);
+        $bodyWith = (array) ($request->input("with.$section") ?? []);
 
         return in_array($name, $bodyWith, true);
     }
