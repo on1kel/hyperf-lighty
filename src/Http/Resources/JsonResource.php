@@ -107,19 +107,25 @@ abstract class JsonResource extends BaseJsonResource
      */
     protected function hasWithInRequest(string $section, string $name): bool
     {
-        /** @var ServerRequestPlusInterface|null $serverRequest */
         $serverRequest = Context::get(ServerRequestPlusInterface::class);
         if ($serverRequest === null) {
-            // Нет активного HTTP-запроса (CLI, воркер-старт, крон и т.д.)
             return false;
         }
 
+        // query params: ?with[]=relationships.file (старый формат)
         $with = $serverRequest->getQueryParams()['with'] ?? [];
         if (is_string($with)) {
             $with = array_filter(array_map('trim', explode(',', $with)));
         }
+        if (in_array("$section.$name", $with, true)) {
+            return true;
+        }
 
-        return in_array("$section.$name", $with, true);
+        // request body: {"with": {"relationships": ["file"]}} (JSON формат)
+        $body = (array) ($serverRequest->getParsedBody() ?? []);
+        $bodyWith = (array) ($body['with'][$section] ?? []);
+
+        return in_array($name, $bodyWith, true);
     }
 
     /**
