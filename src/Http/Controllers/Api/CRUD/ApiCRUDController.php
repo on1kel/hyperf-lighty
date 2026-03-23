@@ -93,6 +93,9 @@ abstract class ApiCRUDController extends ApiController implements WithDBTransact
 
         if ($controller_meta_dto->hasAllowedRelationships()) {
             $this->allowed_relationships = $controller_meta_dto->allowed_relationships;
+        } else {
+            $model = new $this->current_model();
+            $this->allowed_relationships = array_keys($model->getLocalRelations());
         }
     }
 
