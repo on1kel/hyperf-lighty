@@ -6,12 +6,11 @@ namespace On1kel\HyperfLighty\Http\Resources;
 
 use Closure;
 use Hyperf\Context\ApplicationContext;
-use Hyperf\Context\Context;
+use Hyperf\Context\RequestContext;
 use Hyperf\HttpServer\Contract\RequestInterface;
 use Hyperf\Resource\Json\AnonymousResourceCollection;
 use Hyperf\Resource\Json\JsonResource as BaseJsonResource;
 use Hyperf\Resource\Value\MissingValue;
-use Swow\Psr7\Message\ServerRequestPlusInterface;
 
 /**
  * Базовый ресурс проекта, расширяющий Hyperf\Resource\Json\JsonResource.
@@ -109,12 +108,12 @@ abstract class JsonResource extends BaseJsonResource
      */
     protected function hasWithInRequest(string $section, string $name): bool
     {
-        $serverRequest = Context::get(ServerRequestPlusInterface::class);
+        $serverRequest = RequestContext::getOrNull();
         if ($serverRequest === null) {
             return false;
         }
 
-        // query params: ?with[]=relationships.file (старый формат)
+        // query params: ?with[]=relationships.file
         $with = $serverRequest->getQueryParams()['with'] ?? [];
         if (is_string($with)) {
             $with = array_filter(array_map('trim', explode(',', $with)));
@@ -123,7 +122,7 @@ abstract class JsonResource extends BaseJsonResource
             return true;
         }
 
-        // request body: {"with": {"relationships": ["file"]}} (JSON формат)
+        // JSON body: {"with": {"relationships": ["file"]}}
         $request = ApplicationContext::getContainer()->get(RequestInterface::class);
         $bodyWith = (array) ($request->input("with.$section") ?? []);
 
