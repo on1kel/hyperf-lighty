@@ -2,9 +2,7 @@
 
 
 return [
-    'model_events' => [
-        'map' => [
-            // \App\Model\User::class => 'user',
-        ],
+    'map' => [
+        // \App\Model\User::class => 'user',
     ],
 ];

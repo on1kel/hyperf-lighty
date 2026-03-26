@@ -24,13 +24,13 @@ final class ConfigProvider
          */
         $basePath = \defined('BASE_PATH') ? \BASE_PATH : '';
         $eventsDir = $basePath !== '' ? $basePath . '/config/events' : null;
-        $payload = [];
+        $payloadNested = [];
 
         if ($eventsDir && \is_dir($eventsDir)) {
             foreach (\glob($eventsDir . '/*.php') ?: [] as $file) {
                 $key = \basename($file, '.php'); // например, 'example'
                 // грузим массив событий для модели
-                $payload["model_events.payload.{$key}"] = require $file;
+                $payloadNested[$key] = require $file;
             }
         }
 
@@ -83,7 +83,7 @@ final class ConfigProvider
             'paths' => [
                 // ваши пути оставляем как есть — они у вас закомментированы
                 // __DIR__ . '/Console',
-                __DIR__ . '/Listeners', // здесь лежит UniversalModelEventsRouter
+                __DIR__ . '/Domain/Listeners', // здесь лежит UniversalModelEventsRouter
             ],
         ];
 
@@ -106,6 +106,7 @@ final class ConfigProvider
                 'map' => [
                     // \App\Model\example::class => 'example',
                 ],
+                'payload' => $payloadNested,
             ],
         ];
 
@@ -142,7 +143,6 @@ final class ConfigProvider
 
             // === Корневой конфиг для карты + сгенерированный payload из config/events/*.php ===
             ...$rootModelEvents,
-            ...$payload,
         ];
     }
 }

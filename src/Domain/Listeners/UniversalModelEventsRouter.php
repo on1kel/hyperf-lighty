@@ -30,7 +30,6 @@ final class UniversalModelEventsRouter implements ListenerInterface
     public function __construct(
         private readonly ConfigInterface $config,
         private readonly ContainerInterface $container,
-        private readonly DriverFactory $driverFactory,
         private readonly AfterCommitManager $afterCommit,
     ) {
     }
@@ -131,7 +130,7 @@ final class UniversalModelEventsRouter implements ListenerInterface
 
     private function enqueue(string $actionClass, object $model, string $queue, int $tries): void
     {
-        $driver = $this->driverFactory->get($queue);
+        $driver = $this->container->get(DriverFactory::class)->get($queue);
 
         $job = new QueuedActionJob($actionClass, $model);
         $job->setMaxAttempts(max(1, $tries));
