@@ -106,8 +106,18 @@ final class ModelReflector
             $payload = $payload['data'];
         }
 
+        // Строим карту описаний из $props
+        $descriptionMap = [];
+        foreach ($props as $p) {
+            /** @var ModelPropertyDTO $p */
+            $dto = is_array($p) ? new ModelPropertyDTO(...$p) : $p;
+            if ($dto->description !== null) {
+                $descriptionMap[$dto->name] = $dto->description;
+            }
+        }
+
         // Строим схему элемента
-        $itemSchema = $this->inferSchemaFromAssocArray($payload);
+        $itemSchema = $this->inferSchemaFromAssocArray($payload, $descriptionMap);
 
         // Возвращаем схему МАССИВА элементов
         return Schema::array()
@@ -144,7 +154,17 @@ final class ModelReflector
             $payload = $payload['data'];
         }
 
-        return $this->inferSchemaFromAssocArray($payload);
+        // Строим карту описаний из $props
+        $descriptionMap = [];
+        foreach ($props as $p) {
+            /** @var ModelPropertyDTO $p */
+            $dto = is_array($p) ? new ModelPropertyDTO(...$p) : $p;
+            if ($dto->description !== null) {
+                $descriptionMap[$dto->name] = $dto->description;
+            }
+        }
+
+        return $this->inferSchemaFromAssocArray($payload, $descriptionMap);
     }
 
     /**
@@ -502,7 +522,7 @@ final class ModelReflector
      * - Если передан массив с числовыми ключами -> это массив, items = схема первого элемента.
      * - Если передан ассоциативный массив -> это объект с properties.
      */
-    private function inferSchemaFromAssocArray(array $data): Schema
+    private function inferSchemaFromAssocArray(array $data, array $descriptions = []): Schema
     {
         // Если список (0..n)
         if (array_is_list($data)) {
@@ -524,7 +544,7 @@ final class ModelReflector
         // Строим properties(...)
         $props = [];
         foreach ($assocOnly as $name => $value) {
-            $props[] = $this->inferSchemaProperty($name, $value);
+            $props[] = $this->inferSchemaProperty($name, $value, $descriptions[$name] ?? null);
         }
 
 
@@ -596,11 +616,15 @@ final class ModelReflector
     /**
      * Построить Schema свойства объекта: Schema::<type>('field')->...
      */
-    private function inferSchemaProperty(string $name, mixed $value): Schema
+    private function inferSchemaProperty(string $name, mixed $value, ?string $description = null): Schema
     {
         // null -> nullable string
         if ($value === null) {
-            return Schema::string($name)->nullable(true);
+            $schema = Schema::string($name)->nullable(true);
+            if ($description !== null) {
+                $schema = $schema->description($description);
+            }
+            return $schema;
         }
 
         if (is_string($value)) {
@@ -610,17 +634,33 @@ final class ModelReflector
             if ($format !== null) {
                 $p = $p->format($format);
             }
+            $p = $p->example($value);
+            if ($description !== null) {
+                $p = $p->description($description);
+            }
 
-            return $p->example($value);
+            return $p;
         }
         if (is_int($value)) {
-            return Schema::integer($name)->example($value);
+            $schema = Schema::integer($name)->example($value);
+            if ($description !== null) {
+                $schema = $schema->description($description);
+            }
+            return $schema;
         }
         if (is_float($value)) {
-            return Schema::number($name)->example($value);
+            $schema = Schema::number($name)->example($value);
+            if ($description !== null) {
+                $schema = $schema->description($description);
+            }
+            return $schema;
         }
         if (is_bool($value)) {
-            return Schema::boolean($name)->example($value);
+            $schema = Schema::boolean($name)->example($value);
+            if ($description !== null) {
+                $schema = $schema->description($description);
+            }
+            return $schema;
         }
 
         if (is_array($value)) {
@@ -661,7 +701,11 @@ final class ModelReflector
         }
 
         // fallback
-        return Schema::string($name);
+        $schema = Schema::string($name);
+        if ($description !== null) {
+            $schema = $schema->description($description);
+        }
+        return $schema;
     }
 
     /**
