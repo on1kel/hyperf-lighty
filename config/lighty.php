@@ -64,6 +64,6 @@ return [
         'fallback_message_text' => 'Something went wrong.',
 
         // Если true — даже для "неразрешённых" отдаём errorData (опасно).
-        'expose_unknown_error_details' => env('EXPOSE_UNKNOWN_ERROR_DETAILS', false),
+        'expose_unknown_error_details' => filter_var(env('EXPOSE_UNKNOWN_ERROR_DETAILS', false), FILTER_VALIDATE_BOOLEAN),
     ]
 ];

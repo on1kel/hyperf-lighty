@@ -54,6 +54,8 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
      */
     public function handle(Throwable $throwable, ResponsePlusInterface $response): ResponsePlusInterface
     {
+        $originalThrowable = $throwable;
+
         if ($this->isAllowed($throwable)) {
             $throwable = $this->translateAllowedException($throwable);
         } else {
@@ -66,8 +68,8 @@ class JsonExceptionHandler extends ExceptionHandler implements RespondableInterf
 
         $errorTrace = null;
 
-        if ($this->isDebugEnabled() && $this->needTrace($throwable)) {
-            $json = json_encode($throwable->getTrace(), $this->json_flags);
+        if ($this->isDebugEnabled() && $this->needTrace($originalThrowable)) {
+            $json = json_encode($originalThrowable->getTrace(), $this->json_flags);
 
             if (is_string($json)) {
                 /** @var array<int|string, mixed> $errorTrace */
