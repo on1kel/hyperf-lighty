@@ -6,6 +6,7 @@ namespace On1kel\HyperfLighty\Services\CRUD;
 
 use Hyperf\Context\ApplicationContext;
 use Hyperf\Database\Model\Builder as EloquentBuilder;
+use Hyperf\Database\Model\SoftDeletes;
 use Hyperf\Database\Model\SoftDeletingScope;
 use Hyperf\Database\Query\Builder as QueryBuilder;
 use On1kel\HyperfLighty\Exceptions\Http\ActionResponseNotFoundException;
@@ -138,6 +139,10 @@ abstract class BaseCRUDAction implements WithDBTransactionInterface
         ActionOptionsDeleted $options
     ): EloquentBuilder|QueryBuilder {
         if (! $options->enable) {
+            return $builder;
+        }
+
+        if (! in_array(SoftDeletes::class, class_uses_recursive($this->currentModel), true)) {
             return $builder;
         }
 
