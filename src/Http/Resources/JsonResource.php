@@ -94,7 +94,11 @@ abstract class JsonResource extends BaseJsonResource
             $relationLoaded = true;
 
             if (is_object($this->resource) && method_exists($this->resource, 'relationLoaded')) {
-                $relationLoaded = $this->resource->relationLoaded($field);
+                $resolvedField = $field;
+                if (method_exists($this->resource, 'completeRelation')) {
+                    $resolvedField = $this->resource->completeRelation($field) ?: $field;
+                }
+                $relationLoaded = $this->resource->relationLoaded($resolvedField);
             }
 
             return $hasInRequest && $relationLoaded;
