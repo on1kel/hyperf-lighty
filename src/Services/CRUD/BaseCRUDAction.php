@@ -25,6 +25,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use ReflectionException;
 use Spatie\DataTransferObject\Exceptions\UnknownProperties;
 use Throwable;
+use function Hyperf\Support\class_uses_recursive;
 
 abstract class BaseCRUDAction implements WithDBTransactionInterface
 {
