@@ -9,7 +9,7 @@ use Throwable;
 
 class ModelUUIDVersionUnsupportedException extends Exception
 {
-    public function __construct(int $uuid_version, int $code = 400, Throwable $previous = null)
+    public function __construct(int $uuid_version, int $code = 400, ?Throwable $previous = null)
     {
         $message = "Unsupported UUID version: {$uuid_version}";
 
