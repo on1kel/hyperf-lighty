@@ -4,12 +4,14 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Http\Controllers\Api;
 
+use Hyperf\Collection\Arr;
 use Hyperf\HttpMessage\Base\Response as BaseResponse;
+use Hyperf\Paginator\AbstractPaginator;
+use Hyperf\Resource\Json\JsonResource;
+use Hyperf\Resource\Json\ResourceCollection;
 use JsonException;
 use On1kel\HyperfLighty\Exceptions\Http\ActionResponseException;
 use On1kel\HyperfLighty\Http\Controllers\Api\DTO\ApiResponseDTO;
-// ваш базовый ресурс
-// ресурс из hyperf/resource
 use On1kel\HyperfLighty\Http\Controllers\Controller;
 use Psr\Http\Message\ResponseInterface;
 use ReflectionException;
@@ -103,28 +105,10 @@ abstract class ApiController extends Controller
             $headers['Content-Type'] = 'application/json';
         }
 
-        // Если передан ресурс (наш или hyperf), разворачиваем его ответ
-        if (\is_object($data) && \method_exists($data, 'toResponse')) {
-            /** @var \Psr\Http\Message\ResponseInterface $tmpResponse */
-            $tmpResponse = $data->toResponse();
-            $raw = (string) $tmpResponse->getBody();
-
-            /** @var array<string,mixed>|null $tmpData */
-            $tmpData = \json_decode($raw, true);
-            if (\is_array($tmpData)) {
-                // 1) вытащим meta, если есть
-                if ($meta === null && \array_key_exists('meta', $tmpData)) {
-                    $meta = $tmpData['meta'];
-                }
-
-                // 2) вытащим data, если есть
-                if (\array_key_exists('data', $tmpData)) {
-                    $data = $tmpData['data'];
-                } else {
-                    // ресурс вернул «плоский» массив без ключа data
-                    $data = $tmpData;
-                }
-            }
+        // Если передан ресурс hyperf/resource — разворачиваем его без JSON round-trip,
+        // иначе пустые объекты (stdClass) превращаются в [] на шаге json_decode(..., true).
+        if ($data instanceof JsonResource) {
+            [$data, $meta] = $this->unwrapJsonResource($data, $meta);
         }
 
         // Доп. страховка от двойной обёртки: если в $data остался ровно один ключ `data` — распакуем
@@ -149,6 +133,69 @@ abstract class ApiController extends Controller
         }
 
         return new ApiResponseDTO($response);
+    }
+
+    /**
+     * Развернуть JsonResource напрямую через resolve()/with()/additional, минуя
+     * Hyperf\Resource\Response\Response::toResponse(), чтобы не делать JSON round-trip,
+     * который теряет различие между пустым объектом ({}) и пустым массивом ([]).
+     *
+     * Логика повторяет Hyperf\Resource\Response\Response::wrap() и
+     * Hyperf\Resource\Response\PaginatedResponse::paginationInformation().
+     *
+     * @return array{0: mixed, 1: mixed} [$data, $meta]
+     */
+    protected function unwrapJsonResource(JsonResource $resource, mixed $meta): array
+    {
+        $resolved = $resource->resolve();
+        $with = $resource->with();
+        $additional = $resource->additional;
+
+        // Пагинация: повторяем PaginatedResponse::paginationInformation()
+        if ($resource instanceof ResourceCollection
+            && $resource->resource instanceof AbstractPaginator
+            && \method_exists($resource->resource, 'toArray')
+        ) {
+            /** @var array<string,mixed> $paginated */
+            $paginated = $resource->resource->toArray();
+            $pagination = [
+                'links' => [
+                    'first' => $paginated['first_page_url'] ?? null,
+                    'last' => $paginated['last_page_url'] ?? null,
+                    'prev' => $paginated['prev_page_url'] ?? null,
+                    'next' => $paginated['next_page_url'] ?? null,
+                ],
+                'meta' => Arr::except($paginated, [
+                    'data',
+                    'first_page_url',
+                    'last_page_url',
+                    'prev_page_url',
+                    'next_page_url',
+                ]),
+            ];
+            $with = \array_merge_recursive($pagination, $with);
+        }
+
+        // Повторяем Response::wrap()
+        $wrapper = $resource->wrap;
+        if ($wrapper !== null && ! \array_key_exists($wrapper, $resolved)) {
+            $resolved = [$wrapper => $resolved];
+        } elseif ((! empty($with) || ! empty($additional))
+            && ($wrapper === null || ! \array_key_exists($wrapper, $resolved))
+        ) {
+            $resolved = [($wrapper ?? 'data') => $resolved];
+        }
+
+        $merged = \array_merge_recursive($resolved, $with, $additional);
+
+        if ($meta === null && \array_key_exists('meta', $merged)) {
+            $meta = $merged['meta'];
+            unset($merged['meta']);
+        }
+
+        $data = \array_key_exists('data', $merged) ? $merged['data'] : $merged;
+
+        return [$data, $meta];
     }
 
     /**
