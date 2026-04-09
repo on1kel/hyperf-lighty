@@ -4,7 +4,9 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Http\Controllers\Api;
 
+use Hyperf\Contract\LengthAwarePaginatorInterface;
 use Hyperf\HttpMessage\Base\Response as BaseResponse;
+use Hyperf\Paginator\UrlWindow;
 use Hyperf\Resource\Json\JsonResource;
 use JsonException;
 use On1kel\HyperfLighty\Exceptions\Http\ActionResponseException;
@@ -239,38 +241,7 @@ abstract class ApiController extends Controller
             $to = $total === 0 ? 0 : \min($currentPage * $perPage, $total);
         }
 
-        $links = [];
-        $hasUrl = \method_exists($p, 'url');
-        $hasPrev = \method_exists($p, 'previousPageUrl');
-        $hasNext = \method_exists($p, 'nextPageUrl');
-
-        /** @var string|null $prevUrl */
-        $prevUrl = $hasPrev ? $p->previousPageUrl() : null; // @phpstan-ignore-line method.notFound
-        $links[] = [
-            'url' => $prevUrl,
-            'label' => '&laquo; Previous',
-            'active' => false,
-        ];
-
-        if ($lastPage !== null && $lastPage > 0) {
-            for ($i = 1; $i <= $lastPage; $i++) {
-                /** @var string|null $pageUrl */
-                $pageUrl = $hasUrl ? $p->url($i) : null; // @phpstan-ignore-line method.notFound
-                $links[] = [
-                    'url' => $pageUrl,
-                    'label' => (string) $i,
-                    'active' => ($currentPage === $i),
-                ];
-            }
-        }
-
-        /** @var string|null $nextUrl */
-        $nextUrl = $hasNext ? $p->nextPageUrl() : null;
-        $links[] = [
-            'url' => $nextUrl,
-            'label' => 'Next &raquo;',
-            'active' => false,
-        ];
+        $links = $this->buildPaginationLinks($p, $currentPage, $lastPage);
 
         return [
             'current_page' => $currentPage,
@@ -281,6 +252,77 @@ abstract class ApiController extends Controller
             'total' => $total,
             'links' => $links,
         ];
+    }
+
+    /**
+     * Собирает массив links в стиле Laravel: « Previous | первые N | … | средние | … | последние | Next ».
+     * Для LengthAwarePaginator использует Hyperf\Paginator\UrlWindow (тот же алгоритм, что и в Laravel).
+     * Для остальных пагинаторов отдаёт минимальный набор: только Previous и Next.
+     *
+     * @return array<int, array{url: string|null, label: string, active: bool}>
+     */
+    protected function buildPaginationLinks(object $p, ?int $currentPage, ?int $lastPage): array
+    {
+        $links = [];
+
+        /** @var string|null $prevUrl */
+        $prevUrl = \method_exists($p, 'previousPageUrl') ? $p->previousPageUrl() : null;
+        $links[] = [
+            'url' => $prevUrl,
+            'label' => '&laquo; Previous',
+            'active' => false,
+        ];
+
+        // Нумерация страниц через UrlWindow — только если паджинатор length-aware.
+        if ($p instanceof LengthAwarePaginatorInterface && $lastPage !== null && $lastPage > 0) {
+            $window = UrlWindow::make($p);
+
+            // Собираем элементы в том же порядке, что и Laravel\LengthAwarePaginator::elements():
+            // first → '...' → slider → '...' → last (с фильтрацией пустых).
+            $elements = [];
+            if (\is_array($window['first']) && $window['first'] !== []) {
+                $elements[] = $window['first'];
+            }
+            if (\is_array($window['slider']) && $window['slider'] !== []) {
+                $elements[] = '...';
+                $elements[] = $window['slider'];
+            }
+            if (\is_array($window['last']) && $window['last'] !== []) {
+                $elements[] = '...';
+                $elements[] = $window['last'];
+            }
+
+            foreach ($elements as $element) {
+                if ($element === '...') {
+                    $links[] = [
+                        'url' => null,
+                        'label' => '...',
+                        'active' => false,
+                    ];
+
+                    continue;
+                }
+
+                /** @var array<int,string> $element */
+                foreach ($element as $page => $url) {
+                    $links[] = [
+                        'url' => $url,
+                        'label' => (string) $page,
+                        'active' => ($currentPage === $page),
+                    ];
+                }
+            }
+        }
+
+        /** @var string|null $nextUrl */
+        $nextUrl = \method_exists($p, 'nextPageUrl') ? $p->nextPageUrl() : null;
+        $links[] = [
+            'url' => $nextUrl,
+            'label' => 'Next &raquo;',
+            'active' => false,
+        ];
+
+        return $links;
     }
 
     private function toIntOrNull(mixed $value): ?int
