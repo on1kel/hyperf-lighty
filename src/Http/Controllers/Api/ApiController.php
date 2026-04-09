@@ -4,15 +4,13 @@ declare(strict_types = 1);
 
 namespace On1kel\HyperfLighty\Http\Controllers\Api;
 
-use Hyperf\Collection\Arr;
 use Hyperf\HttpMessage\Base\Response as BaseResponse;
-use Hyperf\Paginator\AbstractPaginator;
 use Hyperf\Resource\Json\JsonResource;
-use Hyperf\Resource\Json\ResourceCollection;
 use JsonException;
 use On1kel\HyperfLighty\Exceptions\Http\ActionResponseException;
 use On1kel\HyperfLighty\Http\Controllers\Api\DTO\ApiResponseDTO;
 use On1kel\HyperfLighty\Http\Controllers\Controller;
+use On1kel\HyperfLighty\Http\Resources\CollectionResource;
 use Psr\Http\Message\ResponseInterface;
 use ReflectionException;
 use Spatie\DataTransferObject\Exceptions\UnknownProperties;
@@ -136,45 +134,43 @@ abstract class ApiController extends Controller
     }
 
     /**
-     * Развернуть JsonResource напрямую через resolve()/with()/additional, минуя
-     * Hyperf\Resource\Response\Response::toResponse(), чтобы не делать JSON round-trip,
-     * который теряет различие между пустым объектом ({}) и пустым массивом ([]).
+     * Развернуть JsonResource напрямую, минуя Hyperf\Resource\Response\Response::toResponse(),
+     * чтобы не делать JSON round-trip, который теряет различие между пустым объектом ({}) и
+     * пустым массивом ([]).
      *
-     * Логика повторяет Hyperf\Resource\Response\Response::wrap() и
-     * Hyperf\Resource\Response\PaginatedResponse::paginationInformation().
+     * Обрабатывает два пути:
+     *   1) Пакетный CollectionResource — у него собственная пагинация через
+     *      PaginatedResourceResponse, поэтому meta строим вручную (current_page/total/...).
+     *   2) Любой другой JsonResource — повторяем логику Hyperf\Resource\Response\Response::wrap().
      *
      * @return array{0: mixed, 1: mixed} [$data, $meta]
      */
     protected function unwrapJsonResource(JsonResource $resource, mixed $meta): array
     {
+        // 1) Пакетный CollectionResource
+        if ($resource instanceof CollectionResource) {
+            /** @var array<int,mixed> $items */
+            $items = $resource->toArray();
+
+            $inner = $resource->resource;
+            if (\is_object($inner) && $this->looksLikePaginator($inner)) {
+                $paginationMeta = $this->buildPaginationMeta($inner);
+
+                if ($meta === null) {
+                    $meta = $paginationMeta;
+                } elseif (\is_array($meta)) {
+                    // Пользовательские поля meta перекрывают пагинационные
+                    $meta = $meta + $paginationMeta;
+                }
+            }
+
+            return [$items, $meta];
+        }
+
+        // 2) Обычный JsonResource (включая SingleResource, AnonymousResourceCollection и т.п.)
         $resolved = $resource->resolve();
         $with = $resource->with();
         $additional = $resource->additional;
-
-        // Пагинация: повторяем PaginatedResponse::paginationInformation()
-        if ($resource instanceof ResourceCollection
-            && $resource->resource instanceof AbstractPaginator
-            && \method_exists($resource->resource, 'toArray')
-        ) {
-            /** @var array<string,mixed> $paginated */
-            $paginated = $resource->resource->toArray();
-            $pagination = [
-                'links' => [
-                    'first' => $paginated['first_page_url'] ?? null,
-                    'last' => $paginated['last_page_url'] ?? null,
-                    'prev' => $paginated['prev_page_url'] ?? null,
-                    'next' => $paginated['next_page_url'] ?? null,
-                ],
-                'meta' => Arr::except($paginated, [
-                    'data',
-                    'first_page_url',
-                    'last_page_url',
-                    'prev_page_url',
-                    'next_page_url',
-                ]),
-            ];
-            $with = \array_merge_recursive($pagination, $with);
-        }
 
         // Повторяем Response::wrap()
         $wrapper = $resource->wrap;
@@ -196,6 +192,107 @@ abstract class ApiController extends Controller
         $data = \array_key_exists('data', $merged) ? $merged['data'] : $merged;
 
         return [$data, $meta];
+    }
+
+    /**
+     * Эвристика «похоже на пагинатор» — повторяет CollectionResource::looksLikePaginator().
+     */
+    protected function looksLikePaginator(object $value): bool
+    {
+        foreach (['perPage', 'currentPage', 'lastPage', 'total', 'items', 'setCollection'] as $m) {
+            if (! \method_exists($value, $m)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Собирает meta-блок пагинации в том же формате, что и
+     * On1kel\HyperfLighty\Http\Resources\PaginatedResourceResponse::toResponse().
+     *
+     * @return array<string,mixed>
+     */
+    protected function buildPaginationMeta(object $p): array
+    {
+        /** @var int|null $total */
+        $total = \method_exists($p, 'total') ? $this->toIntOrNull($p->total()) : null;
+        /** @var int|null $perPage */
+        $perPage = \method_exists($p, 'perPage') ? $this->toIntOrNull($p->perPage()) : null;
+        /** @var int|null $currentPage */
+        $currentPage = \method_exists($p, 'currentPage') ? $this->toIntOrNull($p->currentPage()) : null;
+        /** @var int|null $lastPage */
+        $lastPage = \method_exists($p, 'lastPage') ? $this->toIntOrNull($p->lastPage()) : null;
+
+        $from = null;
+        if (\method_exists($p, 'firstItem')) {
+            $from = $this->toIntOrNull($p->firstItem());
+        } elseif ($currentPage !== null && $perPage !== null && $total !== null) {
+            $from = $total === 0 ? 0 : (($currentPage - 1) * $perPage) + 1;
+        }
+
+        $to = null;
+        if (\method_exists($p, 'lastItem')) {
+            $to = $this->toIntOrNull($p->lastItem());
+        } elseif ($currentPage !== null && $perPage !== null && $total !== null) {
+            $to = $total === 0 ? 0 : \min($currentPage * $perPage, $total);
+        }
+
+        $links = [];
+        $hasUrl = \method_exists($p, 'url');
+        $hasPrev = \method_exists($p, 'previousPageUrl');
+        $hasNext = \method_exists($p, 'nextPageUrl');
+
+        /** @var string|null $prevUrl */
+        $prevUrl = $hasPrev ? $p->previousPageUrl() : null; // @phpstan-ignore-line method.notFound
+        $links[] = [
+            'url' => $prevUrl,
+            'label' => '&laquo; Previous',
+            'active' => false,
+        ];
+
+        if ($lastPage !== null && $lastPage > 0) {
+            for ($i = 1; $i <= $lastPage; $i++) {
+                /** @var string|null $pageUrl */
+                $pageUrl = $hasUrl ? $p->url($i) : null; // @phpstan-ignore-line method.notFound
+                $links[] = [
+                    'url' => $pageUrl,
+                    'label' => (string) $i,
+                    'active' => ($currentPage === $i),
+                ];
+            }
+        }
+
+        /** @var string|null $nextUrl */
+        $nextUrl = $hasNext ? $p->nextPageUrl() : null;
+        $links[] = [
+            'url' => $nextUrl,
+            'label' => 'Next &raquo;',
+            'active' => false,
+        ];
+
+        return [
+            'current_page' => $currentPage,
+            'from' => $from,
+            'last_page' => $lastPage,
+            'per_page' => $perPage,
+            'to' => $to,
+            'total' => $total,
+            'links' => $links,
+        ];
+    }
+
+    private function toIntOrNull(mixed $value): ?int
+    {
+        if (\is_int($value)) {
+            return $value;
+        }
+        if (\is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     /**
